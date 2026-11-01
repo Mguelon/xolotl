@@ -364,7 +364,12 @@ export function AppRunner() {
                 <span>{t.seed} <b>{shown.settings.seed}</b></span>
               </div>
               <div className="actions">
-                <a className="btn" href={`/api/takes/${shown.id}/workflow.json`} download>{t.workflow} <small>· {t.workflow_hint}</small></a>
+                <div className="rerun" title={t.workflow_hint}>
+                  <a className="btn" href={`/api/takes/${shown.id}/workflow.json`} download>{t.workflow}</a>
+                  <a className="btn" href={`/api/takes/${shown.id}/clip.mp4`} download={`xolotl-${shown.id.slice(0, 8)}-clip.mp4`}>{t.clip_file}</a>
+                  <a className="btn" href={`/api/takes/${shown.id}/${shown.character}`} download={`xolotl-${shown.id.slice(0, 8)}-${shown.character}`}>{t.character_file}</a>
+                  <small>{t.rerun_hint}</small>
+                </div>
                 <a className="btn primary" href={twin.swap} download={`xolotl-${shown.id.slice(0, 8)}.mp4`}>{t.download}</a>
               </div>
             </div>

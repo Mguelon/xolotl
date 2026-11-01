@@ -48,9 +48,20 @@ export async function hasFile(id: string, file: string): Promise<boolean> {
   try { await access(takeFile(id, file)); return true; } catch { return false; }
 }
 
+/** File extension the take stores the character under, from its MIME type. */
+export function characterExt(characterType: string): "jpg" | "webp" | "png" {
+  return characterType === "image/jpeg" ? "jpg" : characterType === "image/webp" ? "webp" : "png";
+}
+
+/** The names the take's portable workflow gives its two inputs: drop the files into ComfyUI/input under these names and the graph runs as it did here. */
+export function portableNames(id: string, characterType: string): { clip: string; character: string } {
+  const short = safeId(id).slice(0, 8);
+  return { clip: `xolotl-${short}-clip.mp4`, character: `xolotl-${short}-character.${characterExt(characterType)}` };
+}
+
 export async function createTake(meta: TakeMeta, graph: unknown, character: Uint8Array, characterType: string, clip: Uint8Array): Promise<TakeMeta> {
   await mkdir(dir(meta.id), { recursive: true });
-  const ext = characterType === "image/jpeg" ? "jpg" : characterType === "image/webp" ? "webp" : "png";
+  const ext = characterExt(characterType);
   const stored = { ...meta, character: `character.${ext}` };
   await writeFile(takeFile(meta.id, stored.character), character);
   await writeFile(takeFile(meta.id, "clip.mp4"), clip);

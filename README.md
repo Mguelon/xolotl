@@ -11,7 +11,7 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 ## What you get
 
 - **The twin view.** Original and swap in one frame with a divider you drag; both videos play in step, so you judge the identity, the scene and the timing in a single look.
-- **Takes.** Every finished swap stays on disk with its character, its settings and the exact workflow JSON that ran — download the video, or *Open in ComfyUI* to inspect or re-run the graph yourself.
+- **Takes.** Every finished swap stays on disk with its character, its settings and the exact workflow JSON that ran — download the video, or the workflow together with its clip and character (named as the workflow expects them) to run the same graph in ComfyUI yourself.
 - **Honest status.** Queue position, elapsed time and live GPU load while it runs (no invented percentages — the API proxy does not relay per-node progress); *Stop* cancels the take through the same API; a reload, or another browser on the LAN, picks a running take up again from the strip. A health pill tells you up front if a node or a model is missing (`npm run doctor` does the same from the terminal).
 - **Two bundled takes** made with open models (a clip from MiniMax H3, characters from Qwen-Image), so the first run needs no upload.
 - English and Spanish interface.

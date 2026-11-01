@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Comfy, type Job, type Progress } from "@comfyorg/sdk";
 import { swapWorkflow, type Graph, type SwapRequest } from "./swap";
 import { comfyLive, type Gpu } from "./comfyui-progress";
-import { createTake, hasFile, readTake, takeFile, updateTake, type TakeMeta } from "./takes";
+import { createTake, hasFile, portableNames, readTake, takeFile, updateTake, type TakeMeta } from "./takes";
 
 export type JobOutput = { id: string; name: string; type: string; url: string };
 export type PublicJob = {
@@ -88,8 +88,9 @@ export async function submitSwap(
     character: api.assets.fromBytes(characterBytes, { filename: files.character.name, contentType: files.character.type || "image/png" }),
   });
   const job = await api.submit(api.workflows.fromJson(graph));
-  // The portable copy names the files instead of the uploaded assets, so it loads in ComfyUI with the same inputs.
-  const portable = swapWorkflow(template, { ...settings, video: files.video.name, character: files.character.name });
+  // The portable copy names its inputs after the take; the strip offers the clip and the character under those names.
+  const names = portableNames(job.id, files.character.type);
+  const portable = swapWorkflow(template, { ...settings, video: names.clip, character: names.character });
   const take = await createTake(
     {
       id: job.id,
