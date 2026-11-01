@@ -5,3 +5,6 @@ node_modules
 dist
 *.tsbuildinfo
 data/
+docs/demo/*.mp4
+docs/demo/*.webm
+docs/demo/build/

@@ -14,6 +14,7 @@ type Output = { id: string; name: string; type: string; url: string };
 type Job = {
   id: string; status: string; outputs: Output[]; error?: unknown;
   progress?: Progress | null; queuePosition?: number | null; startedAt?: string | null; completedAt?: string | null; take?: TakeMeta | null;
+  gpu?: { utilization: number | null; vramUsedGb: number | null; vramTotalGb: number | null } | null;
 };
 type Health = {
   ok: boolean; proxy: { ok: boolean }; comfyui: { ok: boolean; version: string | null; gpu: string | null; vramGb: number | null };
@@ -329,6 +330,7 @@ export function AppRunner() {
                 {progress?.currentNodeClass && <span>{progress.currentNodeClass}</span>}
                 {progress?.nodesDone != null && progress.nodesTotal != null && <span>{progress.nodesDone}/{progress.nodesTotal} nodes</span>}
                 {progress?.step != null && progress.steps != null && <span>step {progress.step}/{progress.steps}</span>}
+                {job?.gpu && job.gpu.utilization != null && <span>GPU <b>{job.gpu.utilization}%</b>{job.gpu.vramUsedGb != null ? ` · ${job.gpu.vramUsedGb}${job.gpu.vramTotalGb ? ` / ${job.gpu.vramTotalGb}` : ""} GB` : ""}</span>}
                 {(active || busy) && !error && <span>{t.eta_hint}</span>}
               </div>
             </div>

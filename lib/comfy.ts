@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Comfy, type Job, type Progress } from "@comfyorg/sdk";
 import { swapWorkflow, type Graph, type SwapRequest } from "./swap";
+import { comfyLive, type Gpu } from "./comfyui-progress";
 import { createTake, hasFile, readTake, takeFile, updateTake, type TakeMeta } from "./takes";
 
 export type JobOutput = { id: string; name: string; type: string; url: string };
@@ -15,6 +16,7 @@ export type PublicJob = {
   startedAt: string | null;
   completedAt: string | null;
   take: TakeMeta | null;
+  gpu: Gpu | null;
 };
 
 const TERMINAL = new Set(["succeeded", "failed", "cancelled", "canceled", "error", "expired"]);
@@ -40,6 +42,8 @@ export function applyModelOverrides(template: Graph): Graph {
 }
 
 function publicJob(job: Job, take: TakeMeta | null): PublicJob {
+  const snapshot = job.progress;
+  const live = isActive(job.status) ? comfyLive() : null;
   return {
     id: job.id,
     status: job.status,
@@ -50,11 +54,12 @@ function publicJob(job: Job, take: TakeMeta | null): PublicJob {
       url: `/api/jobs/${job.id}/outputs/${output.id}`,
     })),
     error: job.error,
-    progress: job.progress,
+    progress: snapshot && (snapshot.value > 0 || (snapshot.nodesTotal ?? 0) > 0) ? snapshot : null,
     queuePosition: job.queuePosition,
-    startedAt: job.startedAt?.toISOString() ?? null,
-    completedAt: job.completedAt?.toISOString() ?? null,
+    startedAt: job.startedAt?.toISOString() ?? take?.startedAt ?? null,
+    completedAt: job.completedAt?.toISOString() ?? take?.completedAt ?? null,
     take,
+    gpu: live?.gpu ?? null,
   };
 }
 
@@ -116,8 +121,9 @@ export async function getJob(id: string): Promise<PublicJob> {
   const job = await client().jobs.get(id);
   let take = await readTake(id);
   if (take) {
-    const startedAt = job.startedAt?.toISOString() ?? take.startedAt ?? null;
-    const completedAt = job.completedAt?.toISOString() ?? take.completedAt ?? null;
+    const now = new Date().toISOString();
+    const startedAt = job.startedAt?.toISOString() ?? take.startedAt ?? (job.status === "running" ? now : null);
+    const completedAt = job.completedAt?.toISOString() ?? take.completedAt ?? (!isActive(job.status) ? now : null);
     const elapsedMs = startedAt && completedAt ? new Date(completedAt).getTime() - new Date(startedAt).getTime() : take.elapsedMs ?? null;
     if (job.status === "succeeded") {
       await persistResult(id, job);
@@ -125,7 +131,7 @@ export async function getJob(id: string): Promise<PublicJob> {
       if (take.status !== "succeeded" || take.result !== result) {
         take = await updateTake(id, { status: "succeeded", result, startedAt, completedAt, elapsedMs, error: null });
       }
-    } else if (take.status !== job.status) {
+    } else if (take.status !== job.status || take.startedAt !== startedAt) {
       const error = job.error ? (typeof job.error === "string" ? job.error : JSON.stringify(job.error)).slice(0, 2000) : null;
       take = await updateTake(id, { status: job.status, startedAt, completedAt, elapsedMs, error });
     }

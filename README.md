@@ -10,7 +10,7 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 
 - **The twin view.** Original and swap in one frame with a divider you drag; both videos play in step, so you judge the identity, the scene and the timing in a single look.
 - **Takes.** Every finished swap stays on disk with its character, its settings and the exact workflow JSON that ran — download the video, or *Open in ComfyUI* to inspect or re-run the graph yourself.
-- **Honest status.** Real progress from ComfyUI (nodes and sampler steps), elapsed time, and a health pill that tells you up front if a node or a model is missing (`npm run doctor` does the same from the terminal).
+- **Honest status.** Queue position, elapsed time and live GPU load while it runs (no invented percentages — the API proxy does not relay per-node progress), and a health pill that tells you up front if a node or a model is missing (`npm run doctor` does the same from the terminal).
 - **Two bundled takes** made with open models (a clip from MiniMax H3, characters from Qwen-Image), so the first run needs no upload.
 - English and Spanish interface.
 
@@ -74,7 +74,7 @@ browser ── Next.js route handlers ── @comfyorg/sdk ── comfy-api-prox
 1. The browser uploads the clip and the character to the app (`POST /api/jobs`), together with the part to use (start, length), the quality (480p / 768p), a seed and an optional direction.
 2. `lib/swap.ts` fills the workflow template: the clip into `LoadVideo`, the character into `LoadImage`, the part into the `Video Slice` and `PrepareVideo` nodes, the prompt and seed into the swap settings. The SDK uploads the files as assets and submits the graph to the proxy, which runs it on ComfyUI.
 3. In the graph, SAM 3.1 finds the person in the first frame and tracks them through the clip; the mask is expanded by 64 px; MiniMax H3 (`ref2va`) regenerates only the masked tokens with the character image as reference, the character-swap LoRA v1.5 and the 8-step turbo LoRA, in one 124-frame window; the result is decoded and saved as MP4 with the source audio.
-4. The app polls the job (`GET /api/jobs/:id`), shows ComfyUI's progress, and when the job succeeds stores the result next to the clip, the character and the workflow in `data/takes/<job id>/`.
+4. The app polls the job (`GET /api/jobs/:id`), shows the queue position, elapsed time and GPU load, and when the job succeeds stores the result next to the clip, the character and the workflow in `data/takes/<job id>/`.
 
 The prompt always starts with the workflow's own instruction — *Replace the selected person in `<Video 1>` with the character in `<Picture 1>`. Preserve the source performance, scene and audio timing.* — and your direction is appended. Describing the character's face, hair, skin, build and outfit works much better than a generic "replace the person" (the authors of the workflow say the same, and our takes agree).
 

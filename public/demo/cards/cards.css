@@ -1,0 +1,23 @@
+@font-face { font-family: "Syne"; src: url("../fonts/Syne.ttf") format("truetype"); font-weight: 400 800; }
+@font-face { font-family: "Instrument Sans"; src: url("../fonts/InstrumentSans.ttf") format("truetype"); font-weight: 400 700; }
+:root { --bg: oklch(14% 0.012 160); --text: oklch(93% 0.012 105); --text-2: oklch(68% 0.016 130); --text-3: oklch(52% 0.016 140); --accent: oklch(86% 0.21 138); --line: oklch(30% 0.018 160); }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: "Instrument Sans", system-ui, sans-serif; }
+body { background-image: radial-gradient(1400px 700px at 85% -10%, color-mix(in oklch, var(--accent) 7%, transparent), transparent 60%); }
+.card { position: absolute; inset: 0; padding: 150px 160px; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.mark { width: 64px; height: 64px; color: var(--accent); }
+.eyebrow { font-family: "Syne"; font-weight: 700; font-size: 24px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+.eyebrow b { color: var(--accent); margin-right: 16px; }
+h1 { font-family: "Syne"; font-weight: 800; font-size: 150px; letter-spacing: .04em; text-transform: uppercase; line-height: 1; }
+h2 { font-family: "Syne"; font-weight: 800; font-size: 84px; letter-spacing: -0.01em; line-height: 1.05; max-width: 1400px; }
+p { font-size: 44px; color: var(--text-2); max-width: 1500px; line-height: 1.3; }
+p.small { font-size: 32px; color: var(--text-3); }
+.row { display: flex; gap: 22px; align-items: center; font-size: 36px; color: var(--text-2); flex-wrap: wrap; }
+.chip { padding: 14px 24px; border: 1px solid var(--line); border-radius: 999px; }
+.chip.on { background: var(--accent); color: oklch(22% 0.06 145); border-color: transparent; font-weight: 600; }
+.arrow { color: var(--accent); }
+table { border-collapse: collapse; font-size: 40px; margin-top: 10px; }
+td { padding: 14px 40px 14px 0; border-bottom: 1px solid var(--line); color: var(--text-2); }
+td b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+td.ac { color: var(--accent); font-family: "Syne"; font-weight: 700; }
+.foot { position: absolute; left: 160px; right: 160px; bottom: 90px; display: flex; justify-content: space-between; font-size: 28px; color: var(--text-3); }
