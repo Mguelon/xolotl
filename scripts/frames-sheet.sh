@@ -9,7 +9,7 @@ for arg in "$@"; do if [[ "$arg" == --fps=* ]]; then FPS="${arg#--fps=}"; else R
 B="$(mktemp -d)"; trap 'rm -rf "$B"' EXIT
 i=0; INPUTS=(); FILTER=""
 for row in "${ROWS[@]}"; do
-  label="${row%%=*}"; file="${row#*=}"; label="${label//:/\\:}"
+  label="${row%%=*}"; file="${row#*=}"; label="${label//:/\\:}"; label="${label//\%/\\\\%}"
   ffmpeg -nostdin -v error -y -i "$file" -vf "fps=$FPS,scale=320:-2,tile=6x1,drawbox=x=0:y=0:w=iw:h=22:color=black@0.6:t=fill,drawtext=text='$label':x=8:y=4:fontsize=16:fontcolor=white" -frames:v 1 "$B/row-$i.png"
   INPUTS+=(-i "$B/row-$i.png"); FILTER+="[$i:v]"; i=$((i+1))
 done

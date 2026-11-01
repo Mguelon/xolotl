@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // Queue ONE measured run on the local ComfyUI from a stored take's workflow, with explicit edits, and record it.
 //
-//   node scripts/bake-run.mjs --take <take-id-prefix> --label <label> [--set <node>.<field>=<value> ...] [--wait]
+//   node scripts/bake-run.mjs --take <take-id-prefix> --label <label> [--set <node>.<field>=<value> ...]
+//        [--insert '{"id":"40","class_type":"X","on":["850",0],"input":"model","inputs":{...}}' ...] [--dry] [--wait]
+//
+// --insert puts a new node on a wire: it reads `on` through `input`, and every node that read `on` reads the new
+// node instead. --dry prints the edits and the rewired consumers without queuing anything.
 //
 // The SaveVideo prefix becomes xolotl/bake_<label>. Every run is appended to docs/demo/build/bake-off.json
 // ({ base, runs: [{ label, prompt_id, take, edits, queued_at, outcome?, seconds?, outputs? }] }).
@@ -20,8 +24,10 @@ const RECORD = join(ROOT, "docs/demo/build/bake-off.json");
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const sets = args.flatMap((a, i) => (a === "--set" ? [args[i + 1]] : []));
+const inserts = args.flatMap((a, i) => (a === "--insert" ? [args[i + 1]] : []));
+const dry = args.includes("--dry");
 const take = opt("--take"), label = opt("--label"), wait = args.includes("--wait");
-if (!take || !label) { console.error("usage: bake-run.mjs --take <id-prefix> --label <label> [--set node.field=value ...] [--wait]"); process.exit(2); }
+if (!take || !label) { console.error("usage: bake-run.mjs --take <id-prefix> --label <label> [--set node.field=value ...] [--insert <json> ...] [--dry] [--wait]"); process.exit(2); }
 
 const dir = readdirSync(TAKES).find((d) => d.startsWith(take));
 if (!dir) { console.error(`no take starts with ${take}`); process.exit(2); }
@@ -37,9 +43,27 @@ for (const s of sets) {
   prompt[node].inputs[field] = value;
   edits[`${node}.${field}`] = value;
 }
+for (const raw of inserts) {
+  let spec;
+  try { spec = JSON.parse(raw); } catch { console.error(`bad --insert ${raw}`); process.exit(2); }
+  const { id, class_type, on, input, inputs = {} } = spec;
+  if (!id || !class_type || !Array.isArray(on) || !input) { console.error(`--insert needs id, class_type, on and input: ${raw}`); process.exit(2); }
+  if (prompt[id]) { console.error(`node ${id} already exists`); process.exit(2); }
+  if (!prompt[on[0]]) { console.error(`node ${on[0]} is not in the workflow`); process.exit(2); }
+  const consumers = [];
+  for (const [nid, node] of Object.entries(prompt)) {
+    for (const [k, v] of Object.entries(node.inputs)) {
+      if (Array.isArray(v) && v[0] === on[0] && v[1] === on[1]) { node.inputs[k] = [id, 0]; consumers.push(`${nid}.${k}`); }
+    }
+  }
+  if (!consumers.length) { console.error(`nothing reads ${on[0]}:${on[1]}`); process.exit(2); }
+  prompt[id] = { class_type, inputs: { ...inputs, [input]: on } };
+  edits[`insert.${id}`] = { class_type, on, consumers, inputs };
+}
 const save = Object.values(prompt).find((n) => n.class_type === "SaveVideo");
 if (!save) { console.error("the workflow has no SaveVideo node"); process.exit(2); }
 save.inputs.filename_prefix = `xolotl/bake_${label}`;
+if (dry) { console.log(JSON.stringify({ take: dir, label, edits }, null, 2)); process.exit(0); }
 
 const client_id = randomUUID();
 let ws;
