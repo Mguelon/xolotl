@@ -214,6 +214,24 @@ export function AppRunner() {
     }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  /** First click arms the control, the second one deletes the take and everything stored with it. */
+  async function removeTake(id: string) {
+    if (confirmDelete !== id) { setConfirmDelete(id); return; }
+    setConfirmDelete(null);
+    try {
+      const response = await fetch(`/api/takes/${id}`, { method: "DELETE" });
+      if (!response.ok && response.status !== 404) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || t.err_status);
+      }
+      if (selected === id) setSelected(null);
+      if (job?.id === id) setJob(null);
+      void loadTakes();
+    } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : t.err_status); }
+  }
+
   /** Keep watching a take that is still in the queue or running, e.g. after a reload. */
   function resume(take: TakeMeta) {
     setError(false); setMessage(""); setSelected(null);
@@ -363,13 +381,20 @@ export function AppRunner() {
             {takes.length === 0 ? <p className="takes-empty">{t.takes_empty}</p> : (
               <div className="take-list">
                 {takes.map((take) => (
-                  <button type="button" key={take.id} className="take" aria-current={selected === take.id} onClick={() => { if (take.status === "succeeded") setSelected(take.id); else if (ACTIVE.has(take.status) && !busy) resume(take); }}>
-                    <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
-                    <span>
-                      <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden /></span>
-                      <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    </span>
-                  </button>
+                  <div className="take-wrap" key={take.id}>
+                    <button type="button" className="take" aria-current={selected === take.id} onClick={() => { if (take.status === "succeeded") setSelected(take.id); else if (ACTIVE.has(take.status) && !busy) resume(take); }}>
+                      <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
+                      <span>
+                        <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden /></span>
+                        <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      </span>
+                    </button>
+                    {!(ACTIVE.has(take.status) && !CANCELED.has(take.status)) && (
+                      <button type="button" className={`take-x${confirmDelete === take.id ? " armed" : ""}`} aria-label={t.delete_label} onClick={() => void removeTake(take.id)} onBlur={() => setConfirmDelete((current) => (current === take.id ? null : current))}>
+                        {confirmDelete === take.id ? t.delete_confirm : "×"}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

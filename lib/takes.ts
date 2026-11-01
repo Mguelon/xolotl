@@ -1,9 +1,14 @@
-import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 export const TAKES_DIR = join(process.cwd(), "data", "takes");
 
-export type TakeSettings = { start: number; seconds: number; size: string; seed: number; direction: string
+export type TakeSettings = {
+  start: number;
+  seconds: number;
+  size: string;
+  seed: number;
+  direction: string;
   steps?: number;
   turbo?: boolean;
 };
@@ -64,6 +69,11 @@ export async function updateTake(id: string, patch: Partial<TakeMeta>): Promise<
   const next = { ...current, ...patch };
   await writeFile(takeFile(id, "meta.json"), JSON.stringify(next, null, 2));
   return next;
+}
+
+/** Removes a take and everything stored with it. The caller decides whether it may go (not while it is running). */
+export async function deleteTake(id: string): Promise<void> {
+  await rm(join(TAKES_DIR, safeId(id)), { recursive: true, force: true });
 }
 
 export async function listTakes(): Promise<TakeMeta[]> {

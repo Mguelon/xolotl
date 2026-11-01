@@ -287,6 +287,11 @@ textarea::placeholder { color: var(--text-3); }
 .take .st { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; margin-top: 6px; }
 .take .st.ok { background: var(--accent); }
 .take .st.bad { background: var(--danger); }
+.take-wrap { position: relative; }
+.take-x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; display: grid; place-items: center; font: inherit; font-size: 14px; line-height: 1; color: var(--text-3); background: var(--bg-1); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; opacity: 0; transition: opacity .15s ease-out; }
+@media (hover: none) { .take-x { opacity: .75; } }
+.take-wrap:hover .take-x, .take-x:focus-visible, .take-x.armed { opacity: 1; }
+.take-x.armed { width: auto; padding: 0 10px; font-size: 12px; color: var(--danger); border-color: var(--danger); }
 .take .st.live { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .35; } }
 
