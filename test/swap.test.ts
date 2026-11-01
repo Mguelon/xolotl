@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { readSettings, swapPrompt, swapWorkflow, type Graph } from "../lib/swap.ts";
+import { estimateMinutes } from "../lib/estimates.ts";
 
 const template = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8")) as Graph;
 const request = {
@@ -92,4 +93,12 @@ test("reads and checks the settings", () => {
   assert.throws(() => readSettings(form({ seconds: "16", size: "768p" })), /between 5 and 15/);
   assert.throws(() => readSettings(form({ seconds: "5", size: "1080p" })), /480p or 768p/);
   assert.throws(() => readSettings(form({ seconds: "5", size: "768p", seed: "1.5" })), /whole-number seed/);
+});
+
+test("estimates minutes from the measured window time", () => {
+  assert.deepEqual(estimateMinutes("480p", 5), [9, 12]);
+  assert.deepEqual(estimateMinutes("480p", 5.1), [9, 12]);
+  assert.deepEqual(estimateMinutes("480p", 10), [18, 24]);
+  assert.deepEqual(estimateMinutes("480p", 5, 20), [23, 30]);
+  assert.equal(estimateMinutes("768p", 5), null);
 });

@@ -6,6 +6,7 @@ import { EXAMPLES, type Example } from "../lib/examples";
 import { STRINGS, type Lang } from "../lib/i18n";
 import { jobErrorMessage } from "../lib/job-error";
 import { MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
+import { estimateMinutes } from "../lib/estimates";
 import type { TakeMeta } from "../lib/takes";
 import { Mark } from "./mark";
 import { Twin } from "./twin";
@@ -326,6 +327,10 @@ export function AppRunner() {
             <label className="seed"><span>{t.seed}</span>
               <input inputMode="numeric" value={seed} disabled={busy} onChange={(event) => setSeed(event.target.value.replace(/\D/g, ""))} placeholder={t.seed_random} /></label>
           </div>
+          {(() => {
+            const estimate = estimateMinutes(size, video ? seconds : 5);
+            return estimate ? <p className="estimate">{t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1]))}</p> : null;
+          })()}
           <button type="button" className="run" disabled={!video || !character || busy} onClick={() => void transform()}>{busy ? t.working : t.run}</button>
           <p className="note">{t.note_audio}</p>
         </section>
@@ -381,7 +386,11 @@ export function AppRunner() {
                 {progress?.nodesDone != null && progress.nodesTotal != null && <span>{progress.nodesDone}/{progress.nodesTotal} nodes</span>}
                 {progress?.step != null && progress.steps != null && <span>step {progress.step}/{progress.steps}</span>}
                 {job?.gpu && job.gpu.utilization != null && <span>GPU <b>{job.gpu.utilization}%</b>{job.gpu.vramUsedGb != null ? ` · ${job.gpu.vramUsedGb}${job.gpu.vramTotalGb ? ` / ${job.gpu.vramTotalGb}` : ""} GB` : ""}</span>}
-                {(active || busy) && !error && <span>{t.eta_hint}</span>}
+                {(active || busy) && !error && (() => {
+                  const settings = job?.take?.settings;
+                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? 8) : estimateMinutes(size, seconds);
+                  return <span>{estimate ? t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1])) : t.eta_hint}</span>;
+                })()}
               </div>
             </div>
           )}
