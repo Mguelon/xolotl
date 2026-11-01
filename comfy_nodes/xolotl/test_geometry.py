@@ -34,3 +34,31 @@ for bad in [(0, 768, "480"), (1344, -1, "480"), (1344, 768, "1080")]:
     else:
         raise AssertionError(f"accepted {bad}")
 print("geometry: ok")
+
+box = geometry.person_box
+terrace = fit(1344, 768, "480") | {"width": 1344, "height": 768}
+# The terrace clip: the swap changed x 46-876, y 18-768 at full size; on the 896x512 canvas that is x 31-584, y 12-512.
+b = box([31, 12, 584, 512], terrace)
+assert b["x"] % 2 == 0 and b["y"] % 2 == 0 and b["w"] % 2 == 0 and b["h"] % 2 == 0, b
+assert b["x"] + b["w"] <= 1344 and b["y"] + b["h"] <= 768 and b["y"] == 0, b
+assert b["x"] == 0 and b["x"] + b["w"] >= 876 + 100, ("the person and the margin, stopped by the left edge", b)
+assert 9 / 16 - 0.01 <= b["w"] / b["h"] <= 16 / 9 + 0.01, b
+# A small standing person in a 1080p frame: the crop is a portrait around them, at least 9:16.
+hd = fit(1920, 1080, "480") | {"width": 1920, "height": 1080}
+s = 910 / 1920
+b = box([8 + 800 * s, 200 * s, 8 + 1000 * s, 900 * s], hd)
+assert abs(b["w"] / b["h"] - 9 / 16) < 0.02, b
+assert b["x"] < 800 and b["x"] + b["w"] > 1000 and b["y"] < 200 and b["y"] + b["h"] > 900, b
+assert fit(b["w"], b["h"], "480")["box"][2] >= b["w"] * 0.9, ("the crop fits the budget at nearly full scale: the 32-px grid costs a little", b)
+# A person filling the frame, the whole frame, and a mask that only sat in the padding.
+assert box([0, 0, 928, 512], hd) == {"x": 0, "y": 0, "w": 1920, "h": 1080}
+assert box(None, hd) == {"x": 0, "y": 0, "w": 1920, "h": 1080}
+assert box([0, 0, 8, 512], hd) == {"x": 0, "y": 0, "w": 1920, "h": 1080}
+# A person lying across the frame: the crop is widened no further than 16:9 and never leaves the frame.
+b = box([100, 300, 800, 340], hd)
+assert b["w"] / b["h"] <= 16 / 9 + 0.01 and b["x"] >= 0 and b["x"] + b["w"] <= 1920, b
+for bbox in [[0, 0, 1, 1], [900, 500, 928, 512], [100, 100, 101, 400], [-50, -50, 2000, 2000]]:
+    b = box(bbox, hd)
+    assert 0 <= b["x"] and 0 <= b["y"] and b["x"] + b["w"] <= 1920 and b["y"] + b["h"] <= 1080 and b["w"] >= 2 and b["h"] >= 2, (bbox, b)
+    assert b["x"] % 2 == 0 and b["y"] % 2 == 0 and b["w"] % 2 == 0 and b["h"] % 2 == 0, (bbox, b)
+print("person box: ok")

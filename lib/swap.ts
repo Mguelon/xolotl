@@ -67,10 +67,14 @@ export const PREFERRED = {
   vae: ["minimax_h3_video_vae_int8_convrot.safetensors", "minimax_h3_video_vae_fp16.safetensors"],
 };
 
+/** The first pass that frames the person: the whole clip on the canvas, the pack's tracking, the person's box. */
+const FIRST_PASS = ["box", "106a", "105a", "104a", "103a", "102a", "31a", "fit0"];
+
 /**
  * Runs the template's recipe with what is installed: a model file ComfyUI does not have gives way to the next one it
  * has, Veda leaves the model wire when its node or predictor is missing (the take then runs full attention), and
- * without Xólotl's own nodes the clip goes to the pack as it is (cropped to its canvas and returned at that size).
+ * without Xólotl's own nodes the clip goes to the pack as it is (cropped to its canvas and returned at that size),
+ * and the first pass that frames the person goes with them.
  */
 export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   const pick = (current: unknown, preferred: string[], have: string[]) =>
@@ -83,6 +87,7 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   if (graph.restore && !installed.xolotlNodes) {
     bypass(graph, "restore", ["808", 0]);
     bypass(graph, "fit", graph.fit.inputs.video);
+    for (const id of FIRST_PASS) delete graph[id];
   }
   return graph;
 }
@@ -93,7 +98,8 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   graph["9"].inputs.image = request.character;
   Object.assign(graph.trim.inputs, { start_time: request.start, duration: request.seconds });
   Object.assign(graph["31"].inputs, { resolution: SIZES[request.size], duration_seconds: request.seconds });
-  if (graph.fit) graph.fit.inputs.resolution = SIZES[request.size];
+  for (const id of ["fit", "fit0"]) if (graph[id]) graph[id].inputs.resolution = SIZES[request.size];
+  if (graph["31a"]) Object.assign(graph["31a"].inputs, { resolution: SIZES[request.size], duration_seconds: request.seconds });
   Object.assign(graph["801"].inputs, {
     prompt: swapPrompt(request.direction, request.anchor !== undefined),
     seed: request.seed,

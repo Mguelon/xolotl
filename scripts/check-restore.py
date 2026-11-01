@@ -13,6 +13,8 @@ and frame 60 of each video as PNG.
 
   docker exec -w /root/ComfyUI comfyui python3.13 check-restore.py --nodes <dir with xolotl/> --pack-video \
       custom_nodes/h3_character_swap/video.py --clip clip.mp4 --start 0 --duration 5 --out <dir> --label terraza
+With --frame-person the ellipse plays the first pass's person: its box goes through XolotlPersonBox, the clip is
+fitted again on that crop, and the fake swaps are restored from the crop's canvas into the full frame.
 """
 import argparse
 import importlib.util
@@ -86,7 +88,8 @@ def best_shift(reference, got, region, frames=(0, 30, 60, 90)):
 def footprint(marked, plain, scale):
     """Where the marker changed the plane at FRAME, in output pixel coordinates (pixel j spans j..j+1; a 4:2:0 chroma
     sample is taken as centred on its 2x2 block)."""
-    ys, xs = np.nonzero(np.abs(marked[FRAME].astype(np.int16) - plain[FRAME].astype(np.int16)) > 8)
+    # 32 levels: the square is pure red, while two separate x264 encodes differ by up to ~26 levels at edges nearby
+    ys, xs = np.nonzero(np.abs(marked[FRAME].astype(np.int16) - plain[FRAME].astype(np.int16)) > 32)
     if not len(xs):
         return None
     return {"center": [round(float((xs.mean() + 0.5) * scale), 1), round(float((ys.mean() + 0.5) * scale), 1)],
@@ -105,6 +108,7 @@ def main():
     parser.add_argument("--start", type=float, default=0.0)
     parser.add_argument("--duration", type=float, default=5.0)
     parser.add_argument("--resolution", default="480")
+    parser.add_argument("--frame-person", action="store_true")
     args = parser.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -130,6 +134,28 @@ def main():
     (canvas_w, canvas_h), (bx, by, bw, bh) = fit["canvas"], fit["box"]
     width, height = fit["width"], fit["height"]
     cx, cy, rx, ry = bx + bw * 0.5, by + bh * 0.55, bw * 0.22, bh * 0.40
+    # The ellipse in the clip's own pixels: the regions at full size and, with --frame-person, the crop.
+    sx, sy = width / bw, height / bh
+    ecx, ecy, erx, ery = (cx - bx) * sx, (cy - by) * sy, rx * sx, ry * sy
+    if args.frame_person:
+        yy, xx = torch.meshgrid(torch.arange(canvas_h), torch.arange(canvas_w), indexing="ij")
+        first = ((((xx + 0.5 - cx) / rx) ** 2 + ((yy + 0.5 - cy) / ry) ** 2) <= 1).float().expand(count, -1, -1)
+        began = time.time()
+        crop, summary = nodes.XolotlPersonBox().frame(first, fit, 0.2, 9 / 16, 16 / 9, 0.5)
+        fitted, fit = nodes.XolotlFitVideo().fit(clip, args.resolution, crop)
+        prepared = pack.LabsH3PrepareVideo().prepare(fitted, args.resolution, args.duration)
+        report["frame_seconds"] = round(time.time() - began, 2)
+        report["crop"] = crop
+        report["frame_summary"] = summary
+        report["fit_cropped"] = {k: v for k, v in fit.items() if k != "source"}
+        report["prepare_cropped"] = {"size": [prepared[2], prepared[3]], "source_frames": prepared[5]}
+        frames, count = prepared[0], prepared[5]
+        if [prepared[2], prepared[3]] != fit["canvas"]:
+            raise SystemExit(f"PrepareVideo changed the cropped canvas: {prepared[2]}x{prepared[3]} vs {fit['canvas']}")
+        (canvas_w, canvas_h), (bx, by, bw, bh) = fit["canvas"], fit["box"]
+        # The same ellipse, now in the crop's canvas: full size -> crop -> canvas box.
+        kx, ky = bw / crop["w"], bh / crop["h"]
+        cx, cy, rx, ry = bx + (ecx - crop["x"]) * kx, by + (ecy - crop["y"]) * ky, erx * kx, ery * ky
     yy, xx = torch.meshgrid(torch.arange(canvas_h), torch.arange(canvas_w), indexing="ij")
     ellipse = ((((xx + 0.5 - cx) / rx) ** 2 + ((yy + 0.5 - cy) / ry) ** 2) <= 1).float()
     masks = ellipse.expand(prepared[4], -1, -1)  # as long as the pack's H3 window, like Expand Mask's
@@ -141,9 +167,7 @@ def main():
     cases = {"identity": (frames, fit), "marker": (marked, fit), "shifted": (shifted, fit),
              "matrix": (frames, {**fit, "color": {**fit["color"], "color_space": other}})}
 
-    # Full-size regions: the ellipse scaled back, MARGIN px clear of its feathered edge.
-    sx, sy = width / bw, height / bh
-    ecx, ecy, erx, ery = (cx - bx) * sx, (cy - by) * sy, rx * sx, ry * sy
+    # Full-size regions: the ellipse at full size, MARGIN px clear of its feathered edge.
     gy, gx = np.mgrid[0:height, 0:width] + 0.5
     radius = lambda grow: ((gx - ecx) / (erx + grow)) ** 2 + ((gy - ecy) / (ery + grow)) ** 2
     inside, outside = radius(-MARGIN) <= 1, radius(MARGIN) >= 1
@@ -165,10 +189,13 @@ def main():
             result["register"] = {plane: best_shift(ref, new, inside if plane == "Y" else inside[::2, ::2])
                                   for plane, ref, new in zip("YUV", reference, got)}
         if name == "marker":
-            mx, my = (round(cx) - bx) * sx, (round(cy) - by) * sy  # the painted square's centre, at full size
+            # The painted square's centre and size at full size (through the crop when there is one).
+            px, py = (crop["x"], crop["y"]) if args.frame_person else (0, 0)
+            qx, qy = (crop["w"] / bw, crop["h"] / bh) if args.frame_person else (sx, sy)
+            mx, my = px + (round(cx) - bx) * qx, py + (round(cy) - by) * qy
             result["marker"] = {"expected": {"center": [round(mx, 1), round(my, 1)],
-                                             "x": [round(mx - 16 * sx), round(mx + 16 * sx)],
-                                             "y": [round(my - 16 * sy), round(my + 16 * sy)]},
+                                             "x": [round(mx - 16 * qx), round(mx + 16 * qx)],
+                                             "y": [round(my - 16 * qy), round(my + 16 * qy)]},
                                 **{plane: footprint(new, old, 1 if plane == "Y" else 2)
                                    for plane, new, old in zip("YUV", got, identity)}}
         target = out / f"{args.label}-{name}.mp4"

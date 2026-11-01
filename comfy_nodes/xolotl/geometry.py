@@ -37,3 +37,38 @@ def fit_canvas(width: float, height: float, resolution: str) -> dict:
     x = (canvas_w - box_w) // 4 * 2
     y = (canvas_h - box_h) // 4 * 2
     return {"canvas": [canvas_w, canvas_h], "box": [x, y, box_w, box_h]}
+
+
+def person_box(bbox, fit: dict, margin: float = 0.2, min_aspect: float = 9 / 16, max_aspect: float = 16 / 9) -> dict:
+    """Where to crop the clip around the person, in the clip's own pixels, so the swap spends its canvas on them.
+
+    bbox: [x0, y0, x1, y1], the union of the person's masks over every frame, in pixels of the canvas `fit`
+    describes (x1 and y1 exclusive); empty or outside the clip gives the whole frame. margin: room per side as a
+    fraction of the box's longer side: the character may have bigger hair or clothes than the person, and the swap's
+    mask grows on the canvas. The crop's width / height is kept between min_aspect and max_aspect (portrait to
+    landscape phone formats by default), as far as the frame allows. Returns {"x", "y", "w", "h"}, even and inside
+    the frame.
+    """
+    width, height = fit["width"], fit["height"]
+    bx, by, bw, bh = fit["box"]
+    whole = {"x": 0, "y": 0, "w": width, "h": height}
+    if not bbox or bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
+        return whole
+    sx, sy = width / bw, height / bh
+    x0, x1 = (min(max((v - bx) * sx, 0), width) for v in (bbox[0], bbox[2]))
+    y0, y1 = (min(max((v - by) * sy, 0), height) for v in (bbox[1], bbox[3]))
+    if x1 <= x0 or y1 <= y0:
+        return whole  # the mask sat in the padding
+    pad = margin * max(x1 - x0, y1 - y0)
+    x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
+    w, h = x1 - x0, y1 - y0
+    if min_aspect > 0 and w < h * min_aspect:
+        w = min(width, h * min_aspect)
+    if max_aspect > 0 and h < w / max_aspect:
+        h = min(height, w / max_aspect)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    w, h = min(w, width), min(h, height)
+    x0, y0 = min(max(cx - w / 2, 0), width - w), min(max(cy - h / 2, 0), height - h)
+    left, top = int(x0 // 2 * 2), int(y0 // 2 * 2)
+    right, bottom = min(width, -(-int(x0 + w) // 2) * 2), min(height, -(-int(y0 + h) // 2) * 2)
+    return {"x": left, "y": top, "w": right - left, "h": bottom - top}

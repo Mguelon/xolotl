@@ -548,11 +548,15 @@
       "video": [
         "trim",
         0
+      ],
+      "crop": [
+        "box",
+        0
       ]
     },
     "class_type": "XolotlFitVideo",
     "_meta": {
-      "title": "Xólotl · whole clip on the canvas"
+      "title": "Xólotl · the person's crop on the canvas"
     }
   },
   "restore": {
@@ -574,6 +578,144 @@
     "class_type": "XolotlRestoreSize",
     "_meta": {
       "title": "Xólotl · back at the clip's size"
+    }
+  },
+  "fit0": {
+    "inputs": {
+      "resolution": "480",
+      "video": [
+        "trim",
+        0
+      ]
+    },
+    "class_type": "XolotlFitVideo",
+    "_meta": {
+      "title": "Xólotl · first pass: whole clip on the canvas"
+    }
+  },
+  "31a": {
+    "inputs": {
+      "resolution": 768,
+      "duration_seconds": 5.0,
+      "video": [
+        "fit0",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapPrepareVideo",
+    "_meta": {
+      "title": "Prepare · first pass"
+    }
+  },
+  "102a": {
+    "inputs": {
+      "batch_index": 0,
+      "length": 1,
+      "image": [
+        "31a",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch",
+    "_meta": {
+      "title": "First frame · first pass"
+    }
+  },
+  "103a": {
+    "inputs": {
+      "threshold": 0.35,
+      "refine_iterations": 2,
+      "individual_masks": true,
+      "model": [
+        "100",
+        0
+      ],
+      "image": [
+        "102a",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "SAM3_Detect",
+    "_meta": {
+      "title": "SAM 3.1 · find the person · first pass"
+    }
+  },
+  "104a": {
+    "inputs": {
+      "selection": "largest",
+      "index": 0,
+      "masks": [
+        "103a",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapSelectSubject",
+    "_meta": {
+      "title": "Select person · first pass"
+    }
+  },
+  "105a": {
+    "inputs": {
+      "detection_threshold": 0.5,
+      "max_objects": 1,
+      "detect_interval": 1,
+      "images": [
+        "31a",
+        0
+      ],
+      "model": [
+        "100",
+        0
+      ],
+      "initial_mask": [
+        "104a",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "SAM3_VideoTrack",
+    "_meta": {
+      "title": "SAM 3.1 · track · first pass"
+    }
+  },
+  "106a": {
+    "inputs": {
+      "object_indices": "",
+      "track_data": [
+        "105a",
+        0
+      ]
+    },
+    "class_type": "SAM3_TrackToMask",
+    "_meta": {
+      "title": "Masks · first pass"
+    }
+  },
+  "box": {
+    "inputs": {
+      "margin": 0.2,
+      "min_aspect": 0.5625,
+      "max_aspect": 1.7778,
+      "threshold": 0.5,
+      "masks": [
+        "106a",
+        0
+      ],
+      "fit": [
+        "fit0",
+        1
+      ]
+    },
+    "class_type": "XolotlPersonBox",
+    "_meta": {
+      "title": "Xólotl · frame the person"
     }
   }
 }

@@ -51,7 +51,19 @@ Checked on CPU with the pack's own PrepareVideo (`scripts/check-restore.py`): fa
 
 Every output has the clip's frames and sound. The mean difference outside is +0.02 levels in every plane: the final encode and nothing else. Inside, U and V stay within 0.11 levels and Y within 0.43, so the colour comes back from the model's RGB as it went in. Every plane registers best at a shift of 0, 0, and a red square painted on the canvas lands within 2 px of its place at full size.
 
-Through the app (`scripts/check-take.py`, the 5.1 s take above): 1344×768 and 122 frames, the same count as F. On the 44.7 % of the frame the swap left alone, the result matches the clip at 49.68 / 53.65 / 53.62 dB with biases under 0.03 levels, and that background's gradient is 1.03 times the clip's: as sharp as the original. The jacket reads 121.83 / 132.15 against 121.78 / 132.07 for F.
+### Framing the person
+
+The whole frame on a 0.5 MP canvas gives the person 67 % of their pixels per side in the terrace clip and 47 % in a 1080p one. *Frame the Person* takes the masks of a first pass over the whole frame, puts a crop around the person (20 % of room per side, aspect kept between 9:16 and 16:9) on the canvas instead, and *Restore Clip Size* pastes the swap back at the crop's place. The same check on CPU, the ellipse playing the first pass's person (`--frame-person`):
+
+| Clip | The person's box, at full size | Crop | Canvas | The person's scale | Outside, Y | Marker at full size |
+|---|---|---|---|---|---|---|
+| 1344×768 | 591×614 | 838×768 at (252, 0) | 736×672 | **0.876** instead of 0.667 | 48.56 dB | at its place within 2 px |
+| 1920×1080 | 844×863 | 1190×1080 at (364, 0) | 736×672 | **0.618** instead of 0.474 | 48.74 dB | within 2 px |
+| 720×1280 | 318×1023 | the whole frame | 512×928 | 0.711, unchanged | 48.59 dB | within 2 px |
+
+Every plane registers at 0, 0 and the output has the clip's size, frames and sound. The crop's canvas may be a little bigger than the whole frame's (494 k vs 459 k pixels for the terrace clip: 8 % more model work); the geometry alone says a standing person up to 80 % of a 1080p frame's height gets their native resolution at the same work. The cost is the first pass's tracking: about the tracking time again. Not yet measured on the GPU.
+
+Through the app (`scripts/check-take.py`, the 5.1 s take above, before *Frame the Person*): 1344×768 and 122 frames, the same count as F. On the 44.7 % of the frame the swap left alone, the result matches the clip at 49.68 / 53.65 / 53.62 dB with biases under 0.03 levels, and that background's gradient is 1.03 times the clip's: as sharp as the original. The jacket reads 121.83 / 132.15 against 121.78 / 132.07 for F.
 
 ## The earlier recipe: fp8, 8 steps
 

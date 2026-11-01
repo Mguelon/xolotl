@@ -93,9 +93,9 @@ export async function comfyInstalled(): Promise<Installed | null> {
     return response.ok ? response.json() : null;
   };
   try {
-    const [diffusionModels, vaes, vedaPredictors, veda, fit, restore] = await Promise.all([
+    const [diffusionModels, vaes, vedaPredictors, veda, fit, box, restore] = await Promise.all([
       get("/models/diffusion_models"), get("/models/vae"), get("/models/veda"), get("/object_info/VedaSparseAttention"),
-      get("/object_info/XolotlFitVideo"), get("/object_info/XolotlRestoreSize"),
+      get("/object_info/XolotlFitVideo"), get("/object_info/XolotlPersonBox"), get("/object_info/XolotlRestoreSize"),
     ]);
     const loaded = (info: unknown) => !!info && typeof info === "object" && Object.keys(info).length > 0;
     if (!Array.isArray(diffusionModels) || !Array.isArray(vaes)) return null;
@@ -104,7 +104,7 @@ export async function comfyInstalled(): Promise<Installed | null> {
       vaes,
       vedaPredictors: Array.isArray(vedaPredictors) ? vedaPredictors : [],
       vedaNode: loaded(veda),
-      xolotlNodes: loaded(fit) && loaded(restore),
+      xolotlNodes: loaded(fit) && loaded(box) && loaded(restore),
     };
   } catch { return null; }
 }

@@ -78,7 +78,8 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.equal(bare.restore, undefined);
   assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
   assert.deepEqual(bare["809"].inputs.video, ["808", 0], "and the result is saved at its canvas size");
-  assert.ok(!/\["(fit|restore)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
+  for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "box"]) assert.equal(bare[id], undefined, `${id} goes too`);
+  assert.ok(!/\["(fit|fit0|restore|box|\d+a)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
 });
 
 test("gives the result back at the clip's own size through Xólotl's nodes", () => {
@@ -93,6 +94,14 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.deepEqual(graph.restore.inputs.masks, ["110", 0], "the region the swap regenerated");
     assert.deepEqual(graph.restore.inputs.fit, ["fit", 1]);
     assert.deepEqual(graph["809"].inputs.video, ["restore", 0]);
+    // The first pass frames the person: whole clip on the canvas, the pack's tracking, the box, then the crop's fit.
+    assert.deepEqual(graph.fit0.inputs, { resolution: graph.fit.inputs.resolution, video: ["trim", 0] });
+    assert.deepEqual(graph["31a"].inputs, { ...graph["31"].inputs, video: ["fit0", 0] });
+    assert.deepEqual(graph["105a"].inputs.images, ["31a", 0]);
+    assert.deepEqual(graph.box.inputs.masks, ["106a", 0]);
+    assert.deepEqual(graph.box.inputs.fit, ["fit0", 1]);
+    assert.deepEqual(graph.fit.inputs.crop, ["box", 0]);
+    assert.equal(graph.box.class_type, "XolotlPersonBox");
   }
 });
 
