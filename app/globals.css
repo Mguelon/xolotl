@@ -284,7 +284,7 @@ textarea::placeholder { color: var(--text-3); }
 .take .st { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; margin-top: 6px; }
 .take .st.ok { background: var(--accent); }
 .take .st.bad { background: var(--danger); }
-.take .st.run { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.take .st.live { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .35; } }
 
 /* Footer */

@@ -6,6 +6,7 @@ All runs: one machine (Ubuntu, RTX A4000 **16 GB**, 62 GB RAM, ComfyUI 0.41.2 in
 |---|---|---|---|---|---|
 | 1 | `minimax_h3_ref2va_pruned_fp8_scaled` (Comfy-Org, 21 GB) | **11 min 30 s** | 15 712 / 16 376 MiB | +19 GB (weights stream from RAM) | identity stable across all 124 frames, scene and performance preserved |
 | 2 | `Minimax-h3_Singularity_ref2va_v1.3_Pruned_w4a8` (community merge, 11.8 GB) | **8 min 55 s** | 15 716 / 16 376 MiB | +5 GB (weights fit the card) | same clip, same seed: equivalent identity and scene |
+| 3 | fp8 again, but through the app: browser → Comfy SDK → `comfy-api-proxy` → ComfyUI, bundled *Amara* take (5.1 s, 122 frames), seed 4048927270 | **9 min 15 s** (555 s, timed by the app from the first *running* poll) | 15.7 GB reported by ComfyUI's monitor during the run | not sampled | braids, skin, jacket and build follow the character; cup, gestures and smile follow the clip |
 
 What the time contains: SAM 3.1 detection and tracking of the person, VAE encoding of the source clip and audio, the Qwen3-VL text encoder, 8 diffusion steps over one 124-frame window, decoding and MP4 assembly. ComfyUI's dynamic VRAM keeps the whole card busy either way; the difference is how much has to stream from system RAM each step.
 

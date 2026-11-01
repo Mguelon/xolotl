@@ -6,7 +6,7 @@
     },
     "class_type": "UNETLoader",
     "_meta": {
-      "title": "H3 Ref2VA · INT8"
+      "title": "H3 Ref2VA"
     }
   },
   "2": {
@@ -440,7 +440,7 @@
     },
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
-      "title": "Character Swap · V1 LoRA"
+      "title": "Character Swap · v1.5 LoRA"
     }
   },
   "trim": {

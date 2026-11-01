@@ -2,6 +2,8 @@
 
 **Swap the person in a video for the character in one image — on your own GPU, with open weights only. Nothing leaves your machine.**
 
+![Xólotl: the twin view, original on the left and the swapped character on the right](docs/xolotl.png)
+
 Xólotl is a small web app in front of your ComfyUI. Drop a 5–15 s clip and one picture of a character, press *Transform*, and the person in the clip becomes that character while the performance, the scene, the camera and the original sound stay exactly as they were. It runs the character-swap graph that Comfy's own *Openjutsu* uses — MiniMax H3 with Akatz Labs' character-swap LoRA and SAM 3.1 — but entirely on a 16 GB consumer card, through Comfy's official SDK and API proxy, with no accounts, credits or closed models anywhere in the path.
 
 Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-source-higgsfield) (the *Openjutsu* prompt). Named after Xólotl, the Mexica god of lightning and transformation, the twin who could take any form.
@@ -20,8 +22,9 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 |---|---|---|---|
 | `ref2va` fp8 (Comfy-Org, default) | **11 min 30 s** | 15.7 GB | +19 GB |
 | Singularity v1.3 w4a8 (community merge, `--singularity`) | **8 min 55 s** | 15.7 GB | +5 GB |
+| `ref2va` fp8, through the app (5.1 s, bundled *Amara* take) | **9 min 15 s** | 15.7 GB | — |
 
-Same clip, same seed, equivalent result: identity stable across all 124 frames, scene and performance preserved, original audio kept. Details, limits and how the time breaks down: [docs/measurements.md](docs/measurements.md).
+Same clip, same seed, equivalent result in the first two runs: identity stable across all 124 frames, scene and performance preserved, original audio kept. The third row is the app itself (SDK → proxy → ComfyUI) with the bundled example, timed by the app. Details, limits and how the time breaks down: [docs/measurements.md](docs/measurements.md).
 
 ## Requirements
 

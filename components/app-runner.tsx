@@ -212,6 +212,14 @@ export function AppRunner() {
     }
   }
 
+  /** Keep watching a take that is still in the queue or running, e.g. after a reload. */
+  function resume(take: TakeMeta) {
+    setError(false); setMessage(""); setSelected(null);
+    submittedAt.current = new Date(take.createdAt).getTime();
+    setJob({ id: take.id, status: take.status, outputs: [], startedAt: take.startedAt ?? null, take });
+    setPhase("running");
+  }
+
   const shown = selected ? takes.find((take) => take.id === selected) ?? job?.take ?? null : null;
   const twin = shown?.status === "succeeded" && shown.result
     ? { original: `/api/takes/${shown.id}/clip.mp4`, swap: `/api/takes/${shown.id}/result.mp4`, id: shown.id }
@@ -341,10 +349,10 @@ export function AppRunner() {
             {takes.length === 0 ? <p className="takes-empty">{t.takes_empty}</p> : (
               <div className="take-list">
                 {takes.map((take) => (
-                  <button type="button" key={take.id} className="take" aria-current={selected === take.id} onClick={() => { if (take.status === "succeeded") setSelected(take.id); }}>
+                  <button type="button" key={take.id} className="take" aria-current={selected === take.id} onClick={() => { if (take.status === "succeeded") setSelected(take.id); else if (ACTIVE.has(take.status) && !busy) resume(take); }}>
                     <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
                     <span>
-                      <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "run" : "bad"}`} aria-hidden /></span>
+                      <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : "bad"}`} aria-hidden /></span>
                       <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </span>
                   </button>

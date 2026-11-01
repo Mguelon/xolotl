@@ -21,3 +21,5 @@ td { padding: 14px 40px 14px 0; border-bottom: 1px solid var(--line); color: var
 td b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 td.ac { color: var(--accent); font-family: "Syne"; font-weight: 700; }
 .foot { position: absolute; left: 160px; right: 160px; bottom: 90px; display: flex; justify-content: space-between; font-size: 28px; color: var(--text-3); }
+
+.term { margin: 0; font: 24px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #d7e2dc; background: #0e1512; border: 1px solid #1f2a25; border-radius: 14px; padding: 26px 32px; white-space: pre; overflow: hidden; }
