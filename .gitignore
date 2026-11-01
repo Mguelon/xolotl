@@ -9,3 +9,4 @@ docs/demo/*.mp4
 docs/demo/*.webm
 docs/demo/build/
 next-env.d.ts
+__pycache__/

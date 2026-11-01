@@ -1,12 +1,12 @@
 {
   "1": {
     "inputs": {
-      "unet_name": "minimax_h3_ref2va_pruned_fp8_scaled.safetensors",
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
     "_meta": {
-      "title": "H3 Ref2VA"
+      "title": "H3 Ref2VA · int8"
     }
   },
   "2": {
@@ -38,7 +38,7 @@
   },
   "4": {
     "inputs": {
-      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "lora_name": "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
       "strength_model": 1,
       "model": [
         "3",
@@ -47,7 +47,7 @@
     },
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
-      "title": "FL2V Turbo · 8-step LoRA"
+      "title": "Ref2V Turbo · 4-step LoRA"
     }
   },
   "6": {
@@ -63,11 +63,11 @@
   },
   "7": {
     "inputs": {
-      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "H3 video VAE"
+      "title": "H3 video VAE · int8"
     }
   },
   "8": {
@@ -294,7 +294,7 @@
   "800": {
     "inputs": {
       "model": [
-        "850",
+        "veda",
         0
       ],
       "clip": [
@@ -320,7 +320,7 @@
       "prompt": "Replace the selected person with the reference character. Preserve source performance, scene and audio timing.",
       "seed": 904239,
       "audio_guide": true,
-      "steps": 8,
+      "steps": 4,
       "cfg": 1,
       "sampler_name": "er_sde",
       "scheduler": "normal",
@@ -522,6 +522,24 @@
       "filename_prefix": "xolotl/result",
       "format": "mp4",
       "format.codec": "h264"
+    }
+  },
+  "veda": {
+    "inputs": {
+      "predictor": "minimax_h3_r2va_veda_preview_fp8.safetensors",
+      "generated_sparsity": "79%",
+      "reference_sparsity": "79%",
+      "full_attention_layers": "",
+      "full_attention_steps": "",
+      "verbose": false,
+      "model": [
+        "850",
+        0
+      ]
+    },
+    "class_type": "VedaSparseAttention",
+    "_meta": {
+      "title": "Veda sparse attention · 79%"
     }
   }
 }

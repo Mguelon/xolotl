@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Comfy, type Job, type Progress } from "@comfyorg/sdk";
-import { swapWorkflow, type Graph, type SwapRequest } from "./swap";
-import { comfyLive, comfyTiming, type Gpu } from "./comfyui-progress";
+import { fitToInstalled, swapWorkflow, type Graph, type SwapRequest } from "./swap";
+import { comfyInstalled, comfyLive, comfyTiming, type Gpu } from "./comfyui-progress";
 import { createTake, hasFile, portableNames, readTake, takeFile, updateTake, type TakeMeta } from "./takes";
 
 export type JobOutput = { id: string; name: string; type: string; url: string };
@@ -69,9 +69,11 @@ async function bytes(file: File) {
   return new Uint8Array(await file.arrayBuffer());
 }
 
+/** The swap workflow with any model overrides, fitted to what the local ComfyUI has installed. */
 export async function loadTemplate(): Promise<Graph> {
-  const template = JSON.parse(await readFile(join(process.cwd(), "workflows", "swap.api.json"), "utf8")) as Graph;
-  return applyModelOverrides(template);
+  const template = applyModelOverrides(JSON.parse(await readFile(join(process.cwd(), "workflows", "swap.api.json"), "utf8")) as Graph);
+  const installed = await comfyInstalled();
+  return installed ? fitToInstalled(template, installed) : template;
 }
 
 export async function submitSwap(

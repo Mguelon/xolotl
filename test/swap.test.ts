@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { readSettings, swapPrompt, swapWorkflow, type Graph } from "../lib/swap.ts";
-import { estimateMinutes } from "../lib/estimates.ts";
+import { fitToInstalled, PREFERRED, readSettings, swapPrompt, swapWorkflow, type Graph, type Installed } from "../lib/swap.ts";
+import { estimateMinutes, windowCount } from "../lib/estimates.ts";
 
 const template = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8")) as Graph;
 const request = {
@@ -32,15 +32,47 @@ test("asks PrepareVideo for the quality as text (unpatched Akatz pack)", () => {
   assert.equal(swapWorkflow(template, { ...request, seconds: 9.4 })["31"].inputs.duration_seconds, 9.4);
 });
 
-test("samples 8 steps through the turbo LoRA by default, or the full schedule without it", () => {
+test("samples 4 steps through the turbo LoRA by default, or the full schedule without it", () => {
   const fast = swapWorkflow(template, request);
-  assert.equal(fast["801"].inputs.steps, 8);
+  assert.equal(fast["801"].inputs.steps, 4);
   assert.deepEqual(fast["850"].inputs.model, ["4", 0]);
   const full = swapWorkflow(template, { ...request, steps: 20, turbo: false });
   assert.equal(full["801"].inputs.steps, 20);
   assert.equal(full["4"], undefined);
   assert.deepEqual(full["850"].inputs.model, ["3", 0]);
+  assert.deepEqual(full["800"].inputs.model, ["veda", 0], "Veda stays on the wire");
   assert.ok(!JSON.stringify(full).includes('["4",'));
+});
+
+test("runs recipe F: int8 H3, the ref2v 4-step LoRA, the int8 VAE and Veda before the pack", () => {
+  const graph = swapWorkflow(template, request);
+  assert.equal(graph["1"].inputs.unet_name, PREFERRED.unet[0]);
+  assert.equal(graph["4"].inputs.lora_name, "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors");
+  assert.equal(graph["7"].inputs.vae_name, PREFERRED.vae[0]);
+  assert.equal(graph.veda.class_type, "VedaSparseAttention");
+  assert.deepEqual(graph.veda.inputs.model, ["850", 0]);
+  assert.equal(graph.veda.inputs.generated_sparsity, "79%");
+  assert.deepEqual(graph["800"].inputs.model, ["veda", 0]);
+});
+
+test("fits the recipe to what ComfyUI has installed", () => {
+  const all: Installed = {
+    diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae],
+    vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true,
+  };
+  const fit = (installed: Installed, graph = template) => fitToInstalled(structuredClone(graph), installed);
+  assert.deepEqual(fit(all), template, "everything installed: the template as it is");
+  const noVeda = fit({ ...all, vedaNode: false });
+  assert.equal(noVeda.veda, undefined);
+  assert.deepEqual(noVeda["800"].inputs.model, ["850", 0]);
+  assert.equal(fit({ ...all, vedaPredictors: [] }).veda, undefined, "the node without its predictor would stop the take");
+  const older = fit({ ...all, diffusionModels: [PREFERRED.unet[1]], vaes: [PREFERRED.vae[1]] });
+  assert.equal(older["1"].inputs.unet_name, PREFERRED.unet[1]);
+  assert.equal(older["7"].inputs.vae_name, PREFERRED.vae[1]);
+  const pinned = structuredClone(template);
+  pinned["1"].inputs.unet_name = PREFERRED.unet[1];
+  assert.equal(fit(all, pinned)["1"].inputs.unet_name, PREFERRED.unet[1], "an installed override is kept");
+  assert.equal(fit({ ...all, diffusionModels: [], vaes: [] })["1"].inputs.unet_name, PREFERRED.unet[0], "nothing known: no change");
 });
 
 test("runs the v1.5 swap LoRA and saves a video", () => {
@@ -82,7 +114,7 @@ test("reads and checks the settings", () => {
     return data;
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
-    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", steps: 8, turbo: true,
+    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", steps: 4, turbo: true,
   });
   assert.ok(Number.isInteger(readSettings(form({ seconds: "5", size: "768p" })).seed));
   assert.deepEqual(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).steps, 20);
@@ -95,10 +127,17 @@ test("reads and checks the settings", () => {
   assert.throws(() => readSettings(form({ seconds: "5", size: "768p", seed: "1.5" })), /whole-number seed/);
 });
 
-test("estimates minutes from the measured window time", () => {
-  assert.deepEqual(estimateMinutes("480p", 5), [9, 12]);
-  assert.deepEqual(estimateMinutes("480p", 5.1), [9, 12]);
-  assert.deepEqual(estimateMinutes("480p", 10), [18, 24]);
-  assert.deepEqual(estimateMinutes("480p", 5, 20), [23, 30]);
-  assert.deepEqual(estimateMinutes("768p", 5), [28, 32]);
+test("counts windows as the pack plans them", () => {
+  assert.equal(windowCount(5), 1);
+  assert.equal(windowCount(5.1), 1);
+  assert.equal(windowCount(10), 2);
+  assert.equal(windowCount(15), 3);
+});
+
+test("estimates minutes from the measured tracking, window and step times", () => {
+  assert.deepEqual(estimateMinutes("480p", 5), [4, 6]);
+  assert.deepEqual(estimateMinutes("480p", 5.1), [4, 6]);
+  assert.deepEqual(estimateMinutes("480p", 10), [10, 13]);
+  assert.deepEqual(estimateMinutes("480p", 5, 20), [14, 19]);
+  assert.equal(estimateMinutes("768p", 5), null, "not measured with this recipe yet");
 });

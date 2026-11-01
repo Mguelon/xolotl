@@ -12,15 +12,18 @@ for (const file of [".env.local", ".env"]) {
 const PROXY = (process.env.COMFY_BASE_URL || "http://127.0.0.1:8192").replace(/\/$/, "");
 const COMFYUI = (process.env.COMFYUI_URL || "http://127.0.0.1:8188").replace(/\/$/, "");
 const graph = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8"));
-const NODES = [...new Set(Object.values(graph).map((n) => n.class_type))];
+// Veda is optional: without it a take runs full attention (lib/swap.ts fitToInstalled takes it off the wire).
+const OPTIONAL = new Set(["VedaSparseAttention"]);
+const NODES = [...new Set(Object.values(graph).map((n) => n.class_type))].filter((n) => !OPTIONAL.has(n));
+// The template's file first; Xólotl falls back to the fp8 / fp16 file when only that one is installed (lib/swap.ts PREFERRED).
 const MODELS = [
-  ["diffusion_models", graph["1"].inputs.unet_name],
-  ["loras", graph["4"].inputs.lora_name],
-  ["loras", graph["850"].inputs.lora_name],
-  ["text_encoders", graph["6"].inputs.clip_name],
-  ["vae", graph["7"].inputs.vae_name],
-  ["vae", graph["8"].inputs.vae_name],
-  ["checkpoints", graph["100"].inputs.ckpt_name],
+  ["diffusion_models", [graph["1"].inputs.unet_name, "minimax_h3_ref2va_pruned_fp8_scaled.safetensors"]],
+  ["loras", [graph["4"].inputs.lora_name]],
+  ["loras", [graph["850"].inputs.lora_name]],
+  ["text_encoders", [graph["6"].inputs.clip_name]],
+  ["vae", [graph["7"].inputs.vae_name, "minimax_h3_video_vae_fp16.safetensors"]],
+  ["vae", [graph["8"].inputs.vae_name]],
+  ["checkpoints", [graph["100"].inputs.ckpt_name]],
 ];
 let failed = 0;
 const row = (ok, what, detail = "") => { console.log(`${ok ? "✓" : "✗"} ${what}${detail ? ` — ${detail}` : ""}`); if (!ok) failed++; };
@@ -37,11 +40,17 @@ if (info) {
   const missing = NODES.filter((n) => !(n in info));
   row(missing.length === 0, "workflow nodes", missing.length ? `missing: ${missing.join(", ")} (scripts/install-nodes.sh, then restart ComfyUI)` : `${NODES.length} node types present`);
   const lists = {};
-  for (const [folder, file] of MODELS) {
+  for (const [folder, files] of MODELS) {
     lists[folder] ??= await json(`${COMFYUI}/models/${folder}`).catch(() => null);
-    const ok = Array.isArray(lists[folder]) && lists[folder].includes(file);
-    row(ok, `models/${folder}/${file}`, ok ? "" : "missing (scripts/install-models.sh)");
+    const found = files.find((file) => Array.isArray(lists[folder]) && lists[folder].includes(file));
+    const detail = !found ? "missing (scripts/install-models.sh)" : found !== files[0] ? "fallback: slower than the int8 file" : "";
+    row(!!found, `models/${folder}/${found ?? files[0]}`, detail);
   }
+  const predictors = await json(`${COMFYUI}/models/veda`).catch(() => []);
+  const predictor = graph.veda?.inputs.predictor;
+  console.log("VedaSparseAttention" in info && predictors.includes(predictor)
+    ? `✓ Veda sparse attention — models/veda/${predictor}`
+    : "• Veda sparse attention not installed (optional): takes run full attention. scripts/install-nodes.sh + scripts/install-models.sh add it");
 }
 console.log(failed ? `\n${failed} problem(s).` : "\nAll good — run npm run dev.");
 process.exit(failed ? 1 : 0);

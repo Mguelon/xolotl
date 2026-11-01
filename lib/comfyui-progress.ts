@@ -3,6 +3,8 @@
  * live GPU utilisation and VRAM. Per-node execution events only go to the client that submitted the prompt
  * (the API proxy), so Xólotl shows elapsed time and GPU activity rather than a made-up percentage.
  */
+import type { Installed } from "./swap";
+
 export type Gpu = { utilization: number | null; vramUsedGb: number | null; vramTotalGb: number | null; at: string };
 export type Live = { queueRemaining: number | null; gpu: Gpu | null };
 
@@ -11,9 +13,13 @@ type Store = { socket: WebSocket | null; live: Live; timer: ReturnType<typeof se
 const g = globalThis as unknown as { __xolotlLive?: Store };
 const store: Store = (g.__xolotlLive ??= { socket: null, live: { queueRemaining: null, gpu: null }, timer: null });
 
+/** ComfyUI itself, behind the API proxy: for the queue, GPU, exact timings and what is installed. */
+export function comfyuiUrl() {
+  return (process.env.COMFYUI_URL || "http://127.0.0.1:8188").replace(/\/$/, "");
+}
+
 function wsUrl() {
-  const base = (process.env.COMFYUI_URL || "http://127.0.0.1:8188").replace(/\/$/, "");
-  return `${base.replace(/^http/, "ws")}/ws?clientId=xolotl-${process.pid}`;
+  return `${comfyuiUrl().replace(/^http/, "ws")}/ws?clientId=xolotl-${process.pid}`;
 }
 
 function handle(raw: unknown) {
@@ -65,9 +71,8 @@ export function comfyLive(): Live {
  * timestamps of a prompt — better than the moment the app first saw the job running.
  */
 export async function comfyTiming(id: string): Promise<{ startedAt: string; completedAt: string } | null> {
-  const base = (process.env.COMFYUI_URL || "http://127.0.0.1:8188").replace(/\/$/, "");
   try {
-    const response = await fetch(`${base}/history/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(3000) });
+    const response = await fetch(`${comfyuiUrl()}/history/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(3000) });
     if (!response.ok) return null;
     const history = (await response.json()) as Record<string, { status?: { messages?: [string, { timestamp?: number }][] } }>;
     const messages = history[id]?.status?.messages ?? [];
@@ -75,5 +80,28 @@ export async function comfyTiming(id: string): Promise<{ startedAt: string; comp
     const start = at("execution_start"), end = at("execution_success") ?? at("execution_error") ?? at("execution_interrupted");
     if (!start || !end) return null;
     return { startedAt: new Date(start).toISOString(), completedAt: new Date(end).toISOString() };
+  } catch { return null; }
+}
+
+/**
+ * The files in ComfyUI's model folders that the recipe can use and whether the Veda node loaded, so a take runs the
+ * fastest recipe the machine has; null when ComfyUI is not reachable (the template then goes as it is).
+ */
+export async function comfyInstalled(): Promise<Installed | null> {
+  const get = async (path: string): Promise<unknown> => {
+    const response = await fetch(`${comfyuiUrl()}${path}`, { signal: AbortSignal.timeout(3000) });
+    return response.ok ? response.json() : null;
+  };
+  try {
+    const [diffusionModels, vaes, vedaPredictors, veda] = await Promise.all([
+      get("/models/diffusion_models"), get("/models/vae"), get("/models/veda"), get("/object_info/VedaSparseAttention"),
+    ]);
+    if (!Array.isArray(diffusionModels) || !Array.isArray(vaes)) return null;
+    return {
+      diffusionModels,
+      vaes,
+      vedaPredictors: Array.isArray(vedaPredictors) ? vedaPredictors : [],
+      vedaNode: !!veda && typeof veda === "object" && Object.keys(veda).length > 0,
+    };
   } catch { return null; }
 }

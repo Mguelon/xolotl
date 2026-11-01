@@ -7,8 +7,11 @@ export type SwapSize = keyof typeof SIZES;
 
 const MAX_SEED = 2 ** 32 - 1;
 const MAX_DIRECTION = 500;
-/** The pack's default: the 8-step turbo LoRA. H3's own template runs 20 steps without it. */
-export const DEFAULT_STEPS = 8;
+/**
+ * The ref2v 4-step turbo LoRA's count: on the same clip and seed it kept the identity and colour of 8 and 20 steps
+ * (docs/measurements.md). H3's own template runs 20 steps without a turbo LoRA.
+ */
+export const DEFAULT_STEPS = 4;
 const MAX_STEPS = 100;
 
 export type SwapRequest = {
@@ -20,7 +23,7 @@ export type SwapRequest = {
   seconds: number;
   size: SwapSize;
   seed: number;
-  /** Sampling steps (default 8, the turbo LoRA's count). */
+  /** Sampling steps (default 4, the turbo LoRA's count). */
   steps?: number;
   /** false drops the turbo LoRA: full sampling, as in H3's official template (20 steps). */
   turbo?: boolean;
@@ -39,6 +42,41 @@ export function randomSeed(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0];
 }
 
+/** Takes a node off the model wire: whatever read it now reads that node's own `model` input. */
+function bypass(graph: Graph, id: string) {
+  const source = graph[id].inputs.model;
+  delete graph[id];
+  for (const node of Object.values(graph)) {
+    for (const [key, value] of Object.entries(node.inputs)) {
+      if (Array.isArray(value) && value[0] === id) node.inputs[key] = source;
+    }
+  }
+}
+
+/** What the local ComfyUI has: the files in its model folders and whether the Veda node loaded. */
+export type Installed = { diffusionModels: string[]; vaes: string[]; vedaPredictors: string[]; vedaNode: boolean };
+
+/** Fastest first. The int8 files need ComfyUI on CUDA 13 (comfy-kitchen kernels); fp8 / fp16 run everywhere. */
+export const PREFERRED = {
+  unet: ["minimax_h3_ref2va_pruned_int8_convrot.safetensors", "minimax_h3_ref2va_pruned_fp8_scaled.safetensors"],
+  vae: ["minimax_h3_video_vae_int8_convrot.safetensors", "minimax_h3_video_vae_fp16.safetensors"],
+};
+
+/**
+ * Runs the template's recipe with what is installed: a model file ComfyUI does not have gives way to the next one it
+ * has, and Veda leaves the model wire when its node or predictor is missing (the take then runs full attention).
+ */
+export function fitToInstalled(graph: Graph, installed: Installed): Graph {
+  const pick = (current: unknown, preferred: string[], have: string[]) =>
+    have.includes(String(current)) ? current : preferred.find((name) => have.includes(name)) ?? current;
+  graph["1"].inputs.unet_name = pick(graph["1"].inputs.unet_name, PREFERRED.unet, installed.diffusionModels);
+  graph["7"].inputs.vae_name = pick(graph["7"].inputs.vae_name, PREFERRED.vae, installed.vaes);
+  if (graph.veda && !(installed.vedaNode && installed.vedaPredictors.includes(String(graph.veda.inputs.predictor)))) {
+    bypass(graph, "veda");
+  }
+  return graph;
+}
+
 export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   const graph: Graph = structuredClone(template);
   graph["30"].inputs.file = request.video;
@@ -50,15 +88,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     seed: request.seed,
     steps: request.steps ?? DEFAULT_STEPS,
   });
-  if (request.turbo === false) {
-    const source = graph["4"].inputs.model;
-    delete graph["4"];
-    for (const node of Object.values(graph)) {
-      for (const [key, value] of Object.entries(node.inputs)) {
-        if (Array.isArray(value) && value[0] === "4") node.inputs[key] = source;
-      }
-    }
-  }
+  if (request.turbo === false) bypass(graph, "4");
   if (request.anchor !== undefined) {
     graph.anchor_image.inputs.image = request.anchor;
   } else {
