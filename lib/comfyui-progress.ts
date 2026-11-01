@@ -59,3 +59,21 @@ export function comfyLive(): Live {
   const gpu = store.live.gpu && Date.now() - new Date(store.live.gpu.at).getTime() < 15000 ? store.live.gpu : null;
   return { queueRemaining: store.live.queueRemaining, gpu };
 }
+
+/**
+ * When ComfyUI itself is reachable, its history has the exact execution_start / execution_success
+ * timestamps of a prompt — better than the moment the app first saw the job running.
+ */
+export async function comfyTiming(id: string): Promise<{ startedAt: string; completedAt: string } | null> {
+  const base = (process.env.COMFYUI_URL || "http://127.0.0.1:8188").replace(/\/$/, "");
+  try {
+    const response = await fetch(`${base}/history/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(3000) });
+    if (!response.ok) return null;
+    const history = (await response.json()) as Record<string, { status?: { messages?: [string, { timestamp?: number }][] } }>;
+    const messages = history[id]?.status?.messages ?? [];
+    const at = (name: string) => messages.find((m) => m[0] === name)?.[1]?.timestamp;
+    const start = at("execution_start"), end = at("execution_success") ?? at("execution_error") ?? at("execution_interrupted");
+    if (!start || !end) return null;
+    return { startedAt: new Date(start).toISOString(), completedAt: new Date(end).toISOString() };
+  } catch { return null; }
+}

@@ -22,9 +22,10 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 |---|---|---|---|
 | `ref2va` fp8 (Comfy-Org, default) | **11 min 30 s** | 15.7 GB | +19 GB |
 | Singularity v1.3 w4a8 (community merge, `--singularity`) | **8 min 55 s** | 15.7 GB | +5 GB |
-| `ref2va` fp8, through the app (5.1 s, bundled *Amara* take) | **9 min 15 s** | 15.7 GB | — |
+| `ref2va` fp8, through the app (5.1 s, bundled *Amara* take) | **11 min 46 s** | 15.7 GB | — |
+| `ref2va` fp8, **768p** (1312×736), same take and seed | **30 min 21 s** | 15.7 GB | 48.7 GB used in total on a 62 GB machine |
 
-Same clip, same seed, equivalent result in the first two runs: identity stable across all 124 frames, scene and performance preserved, original audio kept. The third row is the app itself (SDK → proxy → ComfyUI) with the bundled example, timed by the app. Details, limits and how the time breaks down: [docs/measurements.md](docs/measurements.md).
+Same clip, same seed, equivalent result in the first two runs: identity stable across all 124 frames, scene and performance preserved, original audio kept. The third row is the app itself (SDK → proxy → ComfyUI) with the bundled example; times are ComfyUI's own (`execution_start` → `execution_success`). Details, limits and how the time breaks down: [docs/measurements.md](docs/measurements.md).
 
 ## Requirements
 
@@ -102,7 +103,7 @@ No partner nodes, no closed API in the path. The first-frame "anchor" that Comfy
 
 ## Limits
 
-One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect 9–12 min per 5 s at 480p on a 16 GB card (see the measurements).
+One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect 9–12 min per 5 s at 480p and about 30 min at 768p on a 16 GB card (see the measurements); 768p needs 64 GB of system RAM with the fp8 weights.
 
 ## Credits
 

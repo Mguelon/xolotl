@@ -6,7 +6,7 @@ import { DEFAULT_STEPS, type SwapSize } from "./swap.ts";
  */
 export const MINUTES_PER_WINDOW: Record<SwapSize, [number, number] | null> = {
   "480p": [9, 12],
-  "768p": null,
+  "768p": [28, 32],
 };
 
 /** Frames per H3 window at 24 fps; the pack plans one window per 124 frames (5.17 s). */

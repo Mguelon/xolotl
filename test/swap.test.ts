@@ -100,5 +100,5 @@ test("estimates minutes from the measured window time", () => {
   assert.deepEqual(estimateMinutes("480p", 5.1), [9, 12]);
   assert.deepEqual(estimateMinutes("480p", 10), [18, 24]);
   assert.deepEqual(estimateMinutes("480p", 5, 20), [23, 30]);
-  assert.equal(estimateMinutes("768p", 5), null);
+  assert.deepEqual(estimateMinutes("768p", 5), [28, 32]);
 });

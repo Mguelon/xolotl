@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Comfy, type Job, type Progress } from "@comfyorg/sdk";
 import { swapWorkflow, type Graph, type SwapRequest } from "./swap";
-import { comfyLive, type Gpu } from "./comfyui-progress";
+import { comfyLive, comfyTiming, type Gpu } from "./comfyui-progress";
 import { createTake, hasFile, portableNames, readTake, takeFile, updateTake, type TakeMeta } from "./takes";
 
 export type JobOutput = { id: string; name: string; type: string; url: string };
@@ -125,20 +125,23 @@ export async function getJob(id: string): Promise<PublicJob> {
   let take = await readTake(id);
   if (take) {
     const now = new Date().toISOString();
-    const startedAt = job.startedAt?.toISOString() ?? take.startedAt ?? (job.status === "running" ? now : null);
-    const completedAt = job.completedAt?.toISOString() ?? take.completedAt ?? (!isActive(job.status) ? now : null);
+    // Once the job is over, ComfyUI's own timestamps replace what the app observed while polling.
+    const exact = !isActive(job.status) && take.timing !== "comfyui" ? await comfyTiming(id) : null;
+    const startedAt = exact?.startedAt ?? job.startedAt?.toISOString() ?? take.startedAt ?? (job.status === "running" ? now : null);
+    const completedAt = exact?.completedAt ?? job.completedAt?.toISOString() ?? take.completedAt ?? (!isActive(job.status) ? now : null);
     const elapsedMs = startedAt && completedAt ? new Date(completedAt).getTime() - new Date(startedAt).getTime() : take.elapsedMs ?? null;
+    const timing = exact ? "comfyui" as const : take.timing;
     if (job.status === "succeeded") {
       await persistResult(id, job);
       const result = (await hasFile(id, "result.mp4")) ? "result.mp4" : null;
-      if (take.status !== "succeeded" || take.result !== result) {
-        take = await updateTake(id, { status: "succeeded", result, startedAt, completedAt, elapsedMs, error: null });
+      if (take.status !== "succeeded" || take.result !== result || exact) {
+        take = await updateTake(id, { status: "succeeded", result, startedAt, completedAt, elapsedMs, timing, error: null });
       }
     } else if (take.status === "canceled" && job.status === "expired") {
       // stopped before it ran: keep the take's own word for it
-    } else if (take.status !== job.status || take.startedAt !== startedAt) {
+    } else if (take.status !== job.status || take.startedAt !== startedAt || exact) {
       const error = job.error ? (typeof job.error === "string" ? job.error : JSON.stringify(job.error)).slice(0, 2000) : null;
-      take = await updateTake(id, { status: job.status, startedAt, completedAt, elapsedMs, error });
+      take = await updateTake(id, { status: job.status, startedAt, completedAt, elapsedMs, timing, error });
     }
   }
   return publicJob(job, take);

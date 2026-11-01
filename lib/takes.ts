@@ -22,6 +22,8 @@ export type TakeMeta = {
   startedAt?: string | null;
   completedAt?: string | null;
   elapsedMs?: number | null;
+  /** "comfyui" when startedAt/completedAt come from ComfyUI's own history, otherwise from the app's polling. */
+  timing?: "comfyui" | null;
   result?: string | null;
   error?: string | null;
 };
