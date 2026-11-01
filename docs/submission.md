@@ -22,10 +22,15 @@ Form: https://form.typeform.com/to/V1dSQrkS (closes Tue Nov 3, 2026, 9 am PT / 1
 > Xólotl: swap the person in a video for any character from one image — on your own GPU, with open weights only. MiniMax H3 + SAM 3.1 + Akatz's swap LoRA on your ComfyUI through the Comfy SDK. 5 s at 480p in ~9–12 min on a 16 GB card, nothing leaves your machine. Twin before/after view, every take keeps its workflow. #OpenSourceHiggsfield
 > (video) · github.com/Mguelon/xolotl
 
-## Demo (≤ 2 min) — script
+## Demo (≤ 2 min) — what is in it
 
-1. 0:00 Title: Xólotl — character swap on your own GPU. The problem: Higgsfield-style swaps need an account and a cloud GPU.
-2. 0:10 The app: drop the clip, add the character, press Transform. Progress from ComfyUI, honest time.
-3. 0:35 The twin view: drag the divider; original and swap in step; audio kept. Second character.
-4. 1:05 How it was built: the graph (SAM 3.1 → mask → H3 ref2va + swap LoRA), Comfy SDK → comfy-api-proxy → local ComfyUI; `npm run doctor`; Open in ComfyUI.
-5. 1:35 Measured: 11:30 (fp8) / 8:55 (Singularity) per 5 s at 480p, RTX A4000 16 GB. Fully open stack. Repo.
+Built by `docs/demo/build.sh docs/demo/segments.tsv docs/demo/xolotl-demo.mp4` from real screen recordings (Playwright, 1920×1080) and title cards rendered from `public/demo/cards/`.
+
+1. Title card — Xólotl, open weights only, nothing leaves your machine.
+2. The take — the app on the LAN: pick the bundled example, the direction is filled in, press *Transform*; the job goes to ComfyUI and the status shows queue, elapsed time and GPU load.
+3. Card 01 — a 5 s take at 480p is about nine to twelve minutes on a 16 GB card, and the app says so.
+4. Card 02 + the twin view — a finished take, the divider dragged across, the original sound, a second take.
+5. Card 03 — how it was built: browser → Next.js → Comfy SDK → comfy-api-proxy → ComfyUI; the SAM 3.1 → mask → H3 graph.
+6. ComfyUI — the exact workflow a take ran, opened from *Open in ComfyUI*, panned from the loaders to the result.
+7. Card — install, then check: the real `npm run doctor` output.
+8. Card 04 — measured on an RTX A4000 16 GB, fully open stack, repo.
