@@ -175,8 +175,9 @@ def main():
         path.replace(target)
         snapshot(["-i", str(target)], out / f"{args.label}-{name}.png")
         report[name] = result
-    report["rss_self_mib"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024  # includes this check's own arrays
-    report["rss_ffmpeg_max_mib"] = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss // 1024
+    # Includes this check's own arrays. RUSAGE_CHILDREN is no use for ffmpeg's memory: a forked child counts with its
+    # parent's RSS until it execs. Measure ffmpeg on its own with /usr/bin/time -v on the same command.
+    report["rss_self_mib"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
     (out / f"report-{args.label}.json").write_text(json.dumps(report, indent=1))
     print(json.dumps(report, indent=1))
 
