@@ -30,7 +30,7 @@ function client() {
   return new Comfy({ apiKey, clientInfo: "xolotl" });
 }
 
-/** The models the template loads can be swapped by environment, e.g. XOLOTL_UNET for the Singularity merge. */
+/** The models the template loads can be swapped by environment, e.g. XOLOTL_UNET for another H3 build you have. */
 export function applyModelOverrides(template: Graph): Graph {
   const unet = process.env.XOLOTL_UNET?.trim();
   const turbo = process.env.XOLOTL_TURBO_LORA?.trim();
