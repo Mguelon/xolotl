@@ -31,6 +31,17 @@ test("asks PrepareVideo for the quality as text (unpatched Akatz pack)", () => {
   assert.equal(swapWorkflow(template, { ...request, seconds: 9.4 })["31"].inputs.duration_seconds, 9.4);
 });
 
+test("samples 8 steps through the turbo LoRA by default, or the full schedule without it", () => {
+  const fast = swapWorkflow(template, request);
+  assert.equal(fast["801"].inputs.steps, 8);
+  assert.deepEqual(fast["850"].inputs.model, ["4", 0]);
+  const full = swapWorkflow(template, { ...request, steps: 20, turbo: false });
+  assert.equal(full["801"].inputs.steps, 20);
+  assert.equal(full["4"], undefined);
+  assert.deepEqual(full["850"].inputs.model, ["3", 0]);
+  assert.ok(!JSON.stringify(full).includes('["4",'));
+});
+
 test("runs the v1.5 swap LoRA and saves a video", () => {
   const graph = swapWorkflow(template, request);
   assert.equal(graph["850"].inputs.lora_name, "h3_character_swap_v1.5.safetensors");
@@ -70,9 +81,13 @@ test("reads and checks the settings", () => {
     return data;
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
-    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x",
+    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", steps: 8, turbo: true,
   });
   assert.ok(Number.isInteger(readSettings(form({ seconds: "5", size: "768p" })).seed));
+  assert.deepEqual(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).steps, 20);
+  assert.equal(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).turbo, false);
+  assert.throws(() => readSettings(form({ seconds: "5", size: "480p", steps: "0" })), /Steps must be/);
+  assert.throws(() => readSettings(form({ seconds: "5", size: "480p", turbo: "maybe" })), /turbo must be/);
   assert.throws(() => readSettings(form({ seconds: "4", size: "768p" })), /between 5 and 15/);
   assert.throws(() => readSettings(form({ seconds: "16", size: "768p" })), /between 5 and 15/);
   assert.throws(() => readSettings(form({ seconds: "5", size: "1080p" })), /480p or 768p/);
