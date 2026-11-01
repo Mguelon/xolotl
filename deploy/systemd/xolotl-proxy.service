@@ -1,0 +1,14 @@
+# Comfy API v2 proxy in front of a local ComfyUI, as a user service.
+#   mkdir -p ~/.config/systemd/user && cp deploy/systemd/*.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now xolotl-proxy xolotl
+[Unit]
+Description=Comfy API proxy for Xólotl (ComfyUI :8188 → API v2 :8192)
+After=network.target
+
+[Service]
+ExecStart=%h/.local/bin/comfy-api-proxy run --comfyui http://127.0.0.1:8188 --port 8192
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

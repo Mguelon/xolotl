@@ -205,6 +205,7 @@ export function AppRunner() {
       const next = await response.json() as Job & { error?: string };
       if (!response.ok) throw new Error(typeof next.error === "string" ? next.error : t.err_submit);
       setJob(next); setPhase("running"); setMessage("");
+      void loadTakes();
     } catch (cause) {
       setPhase("idle"); setError(true); setMessage(cause instanceof Error ? cause.message : t.err_submit);
     }
@@ -236,7 +237,7 @@ export function AppRunner() {
             {!health ? t.health_checking
               : !health.proxy.ok ? t.health_proxy
               : !health.comfyui.ok ? t.health_bad
-              : health.ok ? <><strong>{t.health_ok}</strong>{health.comfyui.gpu ? ` · ${health.comfyui.gpu}${health.comfyui.vramGb ? ` ${health.comfyui.vramGb} GB` : ""}` : ""}</>
+              : health.ok ? <><strong>{t.health_ok}</strong><span className="gpu">{health.comfyui.gpu ? ` · ${health.comfyui.gpu}${health.comfyui.vramGb ? ` ${health.comfyui.vramGb} GB` : ""}` : ""}</span></>
               : `${health.missingNodes.length + health.missingModels.length} missing`}
           </span>
           <button type="button" className="ghost lang" onClick={toggleLang} aria-label="Language">{t.lang}</button>

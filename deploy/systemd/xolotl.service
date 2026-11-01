@@ -1,0 +1,15 @@
+# Xólotl web app (production build) as a user service. Build first: npm ci && npm run build
+[Unit]
+Description=Xólotl — character swap on your own GPU
+After=xolotl-proxy.service
+Wants=xolotl-proxy.service
+
+[Service]
+WorkingDirectory=/mnt/ssd/proyectos/xolotl
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npx next start --hostname 0.0.0.0 --port 3011
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
