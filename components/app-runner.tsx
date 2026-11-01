@@ -22,7 +22,8 @@ type Health = {
 };
 type Phase = "idle" | "submitting" | "running";
 
-const ACTIVE = new Set(["queued", "running", "pending", "in_progress", "starting"]);
+const ACTIVE = new Set(["queued", "running", "pending", "in_progress", "starting", "canceling"]);
+const CANCELED = new Set(["canceled", "cancelled"]);
 const REPO = "https://github.com/Mguelon/xolotl";
 
 function useObjectUrl(file: Blob | null) {
@@ -156,8 +157,9 @@ export function AppRunner() {
     setPhase("idle");
     void loadTakes();
     if (job.status === "succeeded") { setError(false); setMessage(""); setSelected(job.id); }
+    else if (CANCELED.has(job.status)) { setError(false); setMessage(t.canceled); }
     else { setError(true); setMessage(`${t.failed} ${jobErrorMessage(job.error)}`); }
-  }, [job, loadTakes, t.failed]);
+  }, [job, loadTakes, t.failed, t.canceled]);
 
   async function chooseVideo(file: File | undefined) {
     setVideo(null); setDuration(0); setJob(null); setSelected(null); setError(false); setMessage("");
@@ -220,6 +222,16 @@ export function AppRunner() {
     setPhase("running");
   }
 
+  async function cancel() {
+    if (!job || !ACTIVE.has(job.status) || job.status === "canceling") return;
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/cancel`, { method: "POST" });
+      const next = await response.json() as Job & { error?: string };
+      if (!response.ok) throw new Error(typeof next.error === "string" ? next.error : t.err_status);
+      setJob(next);
+    } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : t.err_status); }
+  }
+
   const shown = selected ? takes.find((take) => take.id === selected) ?? job?.take ?? null : null;
   const twin = shown?.status === "succeeded" && shown.result
     ? { original: `/api/takes/${shown.id}/clip.mp4`, swap: `/api/takes/${shown.id}/result.mp4`, id: shown.id }
@@ -233,7 +245,8 @@ export function AppRunner() {
     ? Math.round(Math.min(1, Math.max(0, progress.value)) * 100) : null;
   const phaseText = !job ? message : job.status === "queued" || job.status === "pending"
     ? `${t.phase_queued}${job.queuePosition ? ` #${job.queuePosition}` : ""}`
-    : ACTIVE.has(job.status) ? t.phase_running : job.status === "succeeded" ? t.phase_done : t.failed;
+    : job.status === "canceling" ? t.phase_canceling
+    : ACTIVE.has(job.status) ? t.phase_running : job.status === "succeeded" ? t.phase_done : CANCELED.has(job.status) ? t.canceled : t.failed;
 
   return (
     <div className="app">
@@ -329,6 +342,7 @@ export function AppRunner() {
               <div className="progress-head">
                 <span className="phase">{error ? message || t.failed : phaseText || message}</span>
                 {(active || busy) && <span className="time">{mmss(elapsedMs)}</span>}
+                {job && ACTIVE.has(job.status) && job.status !== "canceling" && <button type="button" className="cancel" onClick={() => void cancel()}>{t.cancel}</button>}
               </div>
               {(active || busy) && !error && (
                 <div className={`track${percent === null ? " indeterminate" : ""}`}><div className="fill" style={{ "--p": `${percent ?? 0}%` } as React.CSSProperties} /></div>
@@ -352,7 +366,7 @@ export function AppRunner() {
                   <button type="button" key={take.id} className="take" aria-current={selected === take.id} onClick={() => { if (take.status === "succeeded") setSelected(take.id); else if (ACTIVE.has(take.status) && !busy) resume(take); }}>
                     <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
                     <span>
-                      <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : "bad"}`} aria-hidden /></span>
+                      <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden /></span>
                       <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </span>
                   </button>

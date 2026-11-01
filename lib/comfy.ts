@@ -43,10 +43,12 @@ export function applyModelOverrides(template: Graph): Graph {
 
 function publicJob(job: Job, take: TakeMeta | null): PublicJob {
   const snapshot = job.progress;
-  const live = isActive(job.status) ? comfyLive() : null;
+  // A take we stopped while it was still queued is dequeued at once; the proxy then no longer sees it and says "expired".
+  const status = take?.status === "canceled" && job.status === "expired" ? "canceled" : job.status;
+  const live = isActive(status) ? comfyLive() : null;
   return {
     id: job.id,
-    status: job.status,
+    status,
     outputs: job.outputs.map((output) => ({
       id: output.id,
       name: output.name,
@@ -131,12 +133,26 @@ export async function getJob(id: string): Promise<PublicJob> {
       if (take.status !== "succeeded" || take.result !== result) {
         take = await updateTake(id, { status: "succeeded", result, startedAt, completedAt, elapsedMs, error: null });
       }
+    } else if (take.status === "canceled" && job.status === "expired") {
+      // stopped before it ran: keep the take's own word for it
     } else if (take.status !== job.status || take.startedAt !== startedAt) {
       const error = job.error ? (typeof job.error === "string" ? job.error : JSON.stringify(job.error)).slice(0, 2000) : null;
       take = await updateTake(id, { status: job.status, startedAt, completedAt, elapsedMs, error });
     }
   }
   return publicJob(job, take);
+}
+
+/** Ask the proxy to stop a take. ComfyUI drops a queued prompt at once; a running one stops at its next check. */
+export async function cancelJob(id: string): Promise<PublicJob> {
+  const job = await client().jobs.get(id);
+  if (!isActive(job.status)) return getJob(id);
+  const after = await job.cancel();
+  if (after.status === "expired" || after.status === "canceled" || after.status === "cancelled") {
+    const take = await readTake(id);
+    if (take) await updateTake(id, { status: "canceled", completedAt: new Date().toISOString(), error: null });
+  }
+  return getJob(id);
 }
 
 export async function getOutput(jobId: string, outputId: string) {

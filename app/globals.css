@@ -236,7 +236,10 @@ textarea::placeholder { color: var(--text-3); }
 
 /* Progress */
 .progress { display: grid; gap: 10px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg-1); }
-.progress-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.progress-head { display: flex; gap: 12px; align-items: baseline; }
+.progress-head .phase { flex: 1; }
+.progress .cancel { font: inherit; font-size: 12.5px; letter-spacing: .04em; color: var(--text-2); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.progress .cancel:hover { color: var(--text); border-color: var(--text-3); }
 .progress-head .phase { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
 .progress-head .time { color: var(--text-2); font-variant-numeric: tabular-nums; font-size: 13px; }
 .track { position: relative; height: 6px; border-radius: 999px; background: var(--bg-3); overflow: hidden; }
