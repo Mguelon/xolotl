@@ -102,7 +102,7 @@
       "resolution": 768,
       "duration_seconds": 5.0,
       "video": [
-        "trim",
+        "fit",
         0
       ]
     },
@@ -492,7 +492,7 @@
   "808": {
     "class_type": "CreateVideo",
     "_meta": {
-      "title": "Video for the app"
+      "title": "Video at the canvas size (when Xólotl's nodes are missing)"
     },
     "inputs": {
       "images": [
@@ -516,7 +516,7 @@
     },
     "inputs": {
       "video": [
-        "808",
+        "restore",
         0
       ],
       "filename_prefix": "xolotl/result",
@@ -540,6 +540,40 @@
     "class_type": "VedaSparseAttention",
     "_meta": {
       "title": "Veda sparse attention · 79%"
+    }
+  },
+  "fit": {
+    "inputs": {
+      "resolution": "480",
+      "video": [
+        "trim",
+        0
+      ]
+    },
+    "class_type": "XolotlFitVideo",
+    "_meta": {
+      "title": "Xólotl · whole clip on the canvas"
+    }
+  },
+  "restore": {
+    "inputs": {
+      "feather": 6.0,
+      "images": [
+        "807",
+        0
+      ],
+      "masks": [
+        "110",
+        0
+      ],
+      "fit": [
+        "fit",
+        1
+      ]
+    },
+    "class_type": "XolotlRestoreSize",
+    "_meta": {
+      "title": "Xólotl · back at the clip's size"
     }
   }
 }

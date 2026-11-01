@@ -84,8 +84,8 @@ export async function comfyTiming(id: string): Promise<{ startedAt: string; comp
 }
 
 /**
- * The files in ComfyUI's model folders that the recipe can use and whether the Veda node loaded, so a take runs the
- * fastest recipe the machine has; null when ComfyUI is not reachable (the template then goes as it is).
+ * The files in ComfyUI's model folders that the recipe can use and whether the Veda and Xólotl nodes loaded, so a
+ * take runs the best recipe the machine has; null when ComfyUI is not reachable (the template then goes as it is).
  */
 export async function comfyInstalled(): Promise<Installed | null> {
   const get = async (path: string): Promise<unknown> => {
@@ -93,15 +93,18 @@ export async function comfyInstalled(): Promise<Installed | null> {
     return response.ok ? response.json() : null;
   };
   try {
-    const [diffusionModels, vaes, vedaPredictors, veda] = await Promise.all([
+    const [diffusionModels, vaes, vedaPredictors, veda, fit, restore] = await Promise.all([
       get("/models/diffusion_models"), get("/models/vae"), get("/models/veda"), get("/object_info/VedaSparseAttention"),
+      get("/object_info/XolotlFitVideo"), get("/object_info/XolotlRestoreSize"),
     ]);
+    const loaded = (info: unknown) => !!info && typeof info === "object" && Object.keys(info).length > 0;
     if (!Array.isArray(diffusionModels) || !Array.isArray(vaes)) return null;
     return {
       diffusionModels,
       vaes,
       vedaPredictors: Array.isArray(vedaPredictors) ? vedaPredictors : [],
-      vedaNode: !!veda && typeof veda === "object" && Object.keys(veda).length > 0,
+      vedaNode: loaded(veda),
+      xolotlNodes: loaded(fit) && loaded(restore),
     };
   } catch { return null; }
 }

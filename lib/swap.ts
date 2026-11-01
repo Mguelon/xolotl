@@ -42,9 +42,8 @@ export function randomSeed(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0];
 }
 
-/** Takes a node off the model wire: whatever read it now reads that node's own `model` input. */
-function bypass(graph: Graph, id: string) {
-  const source = graph[id].inputs.model;
+/** Takes a node out of the graph: whatever read it now reads `source`, by default that node's own `model` input. */
+function bypass(graph: Graph, id: string, source = graph[id].inputs.model) {
   delete graph[id];
   for (const node of Object.values(graph)) {
     for (const [key, value] of Object.entries(node.inputs)) {
@@ -53,8 +52,14 @@ function bypass(graph: Graph, id: string) {
   }
 }
 
-/** What the local ComfyUI has: the files in its model folders and whether the Veda node loaded. */
-export type Installed = { diffusionModels: string[]; vaes: string[]; vedaPredictors: string[]; vedaNode: boolean };
+/** What the local ComfyUI has: the files in its model folders and whether the Veda and Xólotl nodes loaded. */
+export type Installed = {
+  diffusionModels: string[];
+  vaes: string[];
+  vedaPredictors: string[];
+  vedaNode: boolean;
+  xolotlNodes: boolean;
+};
 
 /** Fastest first. The int8 files need ComfyUI on CUDA 13 (comfy-kitchen kernels); fp8 / fp16 run everywhere. */
 export const PREFERRED = {
@@ -64,7 +69,8 @@ export const PREFERRED = {
 
 /**
  * Runs the template's recipe with what is installed: a model file ComfyUI does not have gives way to the next one it
- * has, and Veda leaves the model wire when its node or predictor is missing (the take then runs full attention).
+ * has, Veda leaves the model wire when its node or predictor is missing (the take then runs full attention), and
+ * without Xólotl's own nodes the clip goes to the pack as it is (cropped to its canvas and returned at that size).
  */
 export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   const pick = (current: unknown, preferred: string[], have: string[]) =>
@@ -73,6 +79,10 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   graph["7"].inputs.vae_name = pick(graph["7"].inputs.vae_name, PREFERRED.vae, installed.vaes);
   if (graph.veda && !(installed.vedaNode && installed.vedaPredictors.includes(String(graph.veda.inputs.predictor)))) {
     bypass(graph, "veda");
+  }
+  if (graph.restore && !installed.xolotlNodes) {
+    bypass(graph, "restore", ["808", 0]);
+    bypass(graph, "fit", graph.fit.inputs.video);
   }
   return graph;
 }
@@ -83,6 +93,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   graph["9"].inputs.image = request.character;
   Object.assign(graph.trim.inputs, { start_time: request.start, duration: request.seconds });
   Object.assign(graph["31"].inputs, { resolution: SIZES[request.size], duration_seconds: request.seconds });
+  if (graph.fit) graph.fit.inputs.resolution = SIZES[request.size];
   Object.assign(graph["801"].inputs, {
     prompt: swapPrompt(request.direction, request.anchor !== undefined),
     seed: request.seed,

@@ -6,7 +6,7 @@
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
-    "test": "node --test --experimental-strip-types test/*.test.ts && tsc --noEmit",
+    "test": "node --test --experimental-strip-types test/*.test.ts && tsc --noEmit && python3 -I comfy_nodes/xolotl/test_geometry.py",
     "doctor": "node scripts/doctor.mjs"
   },
   "engines": {

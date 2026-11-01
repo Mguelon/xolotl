@@ -22,7 +22,7 @@ test("binds the clip, the character and the chosen part", () => {
   assert.deepEqual(graph.trim.inputs.video, ["30", 0]);
   assert.equal(graph.trim.inputs.start_time, 2.5);
   assert.equal(graph.trim.inputs.duration, 5);
-  assert.deepEqual(graph["31"].inputs.video, ["trim", 0]);
+  assert.deepEqual(graph.fit.inputs.video, ["trim", 0], "the chosen part goes to the canvas");
   assert.deepEqual(graph["803"].inputs.source_video, ["trim", 0]);
 });
 
@@ -58,7 +58,7 @@ test("runs recipe F: int8 H3, the ref2v 4-step LoRA, the int8 VAE and Veda befor
 test("fits the recipe to what ComfyUI has installed", () => {
   const all: Installed = {
     diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae],
-    vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true,
+    vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true, xolotlNodes: true,
   };
   const fit = (installed: Installed, graph = template) => fitToInstalled(structuredClone(graph), installed);
   assert.deepEqual(fit(all), template, "everything installed: the template as it is");
@@ -73,13 +73,36 @@ test("fits the recipe to what ComfyUI has installed", () => {
   pinned["1"].inputs.unet_name = PREFERRED.unet[1];
   assert.equal(fit(all, pinned)["1"].inputs.unet_name, PREFERRED.unet[1], "an installed override is kept");
   assert.equal(fit({ ...all, diffusionModels: [], vaes: [] })["1"].inputs.unet_name, PREFERRED.unet[0], "nothing known: no change");
+  const bare = fit({ ...all, xolotlNodes: false });
+  assert.equal(bare.fit, undefined);
+  assert.equal(bare.restore, undefined);
+  assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
+  assert.deepEqual(bare["809"].inputs.video, ["808", 0], "and the result is saved at its canvas size");
+  assert.ok(!/\["(fit|restore)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
+});
+
+test("gives the result back at the clip's own size through Xólotl's nodes", () => {
+  for (const size of ["480p", "768p"] as const) {
+    const graph = swapWorkflow(template, { ...request, size });
+    assert.equal(graph.fit.class_type, "XolotlFitVideo");
+    assert.deepEqual(graph.fit.inputs.video, ["trim", 0]);
+    assert.equal(graph.fit.inputs.resolution, graph["31"].inputs.resolution, `${size}: one pixel budget`);
+    assert.deepEqual(graph["31"].inputs.video, ["fit", 0], "the pack gets the whole clip on its canvas");
+    assert.equal(graph.restore.class_type, "XolotlRestoreSize");
+    assert.deepEqual(graph.restore.inputs.images, ["807", 0]);
+    assert.deepEqual(graph.restore.inputs.masks, ["110", 0], "the region the swap regenerated");
+    assert.deepEqual(graph.restore.inputs.fit, ["fit", 1]);
+    assert.deepEqual(graph["809"].inputs.video, ["restore", 0]);
+  }
 });
 
 test("runs the v1.5 swap LoRA and saves a video", () => {
   const graph = swapWorkflow(template, request);
   assert.equal(graph["850"].inputs.lora_name, "h3_character_swap_v1.5.safetensors");
   assert.equal(graph["801"].inputs.seed, 42);
-  assert.deepEqual(graph["809"].inputs.video, ["808", 0]);
+  assert.equal(graph["809"].class_type, "SaveVideo");
+  assert.deepEqual(graph["809"].inputs.video, ["restore", 0]);
+  assert.deepEqual([graph["809"].inputs.format, graph["809"].inputs["format.codec"]], ["mp4", "h264"], "kept as encoded");
 });
 
 test("uses the first frame through a crop when there is one", () => {

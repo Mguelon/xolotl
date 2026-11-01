@@ -11,6 +11,8 @@ export function Twin({ original, swap, labels }: Props) {
   const b = useRef<HTMLVideoElement>(null);
   const [x, setX] = useState(50);
   const [playing, setPlaying] = useState(false);
+  /** The clip's own width / height, so a vertical or square take is not boxed into 16:9. */
+  const [ratio, setRatio] = useState<number | null>(null);
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function Twin({ original, swap, labels }: Props) {
     <div
       ref={box}
       className="frame twin"
-      style={{ "--x": `${x}%` } as React.CSSProperties}
+      style={{ "--x": `${x}%`, ...(ratio ? { "--ratio": String(ratio) } : {}) } as React.CSSProperties}
       onPointerDown={(event) => { dragging.current = true; (event.target as Element).setPointerCapture?.(event.pointerId); place(event.clientX); }}
       onPointerMove={(event) => { if (dragging.current) place(event.clientX); }}
       onPointerUp={() => { dragging.current = false; }}
@@ -67,7 +69,13 @@ export function Twin({ original, swap, labels }: Props) {
       aria-valuemax={100}
     >
       <video ref={a} className="original" src={original} muted playsInline preload="auto" />
-      <video ref={b} className="swap" src={swap} playsInline preload="auto" />
+      <video
+        ref={b} className="swap" src={swap} playsInline preload="auto"
+        onLoadedMetadata={(event) => {
+          const video = event.currentTarget;
+          if (video.videoWidth && video.videoHeight) setRatio(video.videoWidth / video.videoHeight);
+        }}
+      />
       <div className="divider" aria-hidden />
       <div className="handle" aria-hidden>‹›</div>
       <span className="tag left">{labels.original}</span>

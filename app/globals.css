@@ -198,6 +198,8 @@ textarea::placeholder { color: var(--text-3); }
 
 /* Twin viewer: swap on top, clipped by the divider. */
 .twin { touch-action: none; user-select: none; cursor: ew-resize; }
+/* The take's own proportions; a tall clip is capped by the viewport height and centred. */
+.frame.twin { aspect-ratio: var(--ratio, 16 / 9); width: min(100%, calc(76vh * var(--ratio, 16 / 9))); justify-self: center; }
 .twin video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--bg-0); }
 .twin .swap { clip-path: inset(0 0 0 var(--x)); }
 .twin .divider {
