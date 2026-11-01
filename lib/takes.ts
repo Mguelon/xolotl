@@ -3,7 +3,10 @@ import { join } from "node:path";
 
 export const TAKES_DIR = join(process.cwd(), "data", "takes");
 
-export type TakeSettings = { start: number; seconds: number; size: string; seed: number; direction: string };
+export type TakeSettings = { start: number; seconds: number; size: string; seed: number; direction: string
+  steps?: number;
+  turbo?: boolean;
+};
 export type TakeMeta = {
   id: string;
   createdAt: string;

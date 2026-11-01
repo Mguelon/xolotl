@@ -74,7 +74,7 @@ browser ── Next.js route handlers ── @comfyorg/sdk ── comfy-api-prox
                                  workflows/swap.api.json
 ```
 
-1. The browser uploads the clip and the character to the app (`POST /api/jobs`), together with the part to use (start, length), the quality (480p / 768p), a seed and an optional direction.
+1. The browser uploads the clip and the character to the app (`POST /api/jobs`), together with the part to use (start, length), the quality (480p / 768p), a seed and an optional direction. The same endpoint also takes `steps` (1–100, default 8) and `turbo=off`, which drops the 8-step turbo LoRA and samples H3's full schedule as the official template does; the interface does not expose them yet.
 2. `lib/swap.ts` fills the workflow template: the clip into `LoadVideo`, the character into `LoadImage`, the part into the `Video Slice` and `PrepareVideo` nodes, the prompt and seed into the swap settings. The SDK uploads the files as assets and submits the graph to the proxy, which runs it on ComfyUI.
 3. In the graph, SAM 3.1 finds the person in the first frame and tracks them through the clip; the mask is expanded by 64 px; MiniMax H3 (`ref2va`) regenerates only the masked tokens with the character image as reference, the character-swap LoRA v1.5 and the 8-step turbo LoRA, in one 124-frame window; the result is decoded and saved as MP4 with the source audio.
 4. The app polls the job (`GET /api/jobs/:id`), shows the queue position, elapsed time and GPU load, and when the job succeeds stores the result next to the clip, the character and the workflow in `data/takes/<job id>/`.

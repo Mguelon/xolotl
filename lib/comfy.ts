@@ -96,7 +96,7 @@ export async function submitSwap(
       createdAt: new Date().toISOString(),
       clip: files.video.name,
       character: files.character.name,
-      settings: { start: settings.start, seconds: settings.seconds, size: settings.size, seed: settings.seed, direction: settings.direction },
+      settings: { start: settings.start, seconds: settings.seconds, size: settings.size, seed: settings.seed, direction: settings.direction, steps: settings.steps, turbo: settings.turbo },
       status: job.status,
     },
     portable,
