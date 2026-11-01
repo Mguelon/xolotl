@@ -13,3 +13,9 @@ What the time contains: SAM 3.1 detection and tracking of the person, VAE encodi
 Known limits (from the workflow's authors and confirmed here): the clip should be one continuous shot with the person visible in the first frame; with several people the largest one is swapped; the original soundtrack is kept, not regenerated; in run 1 the final frame shows the hand merged with a vase that sat inside the expanded mask.
 
 Reference point: Comfy's own Openjutsu app reports about 2 minutes for a 5 s part at 480p on a Comfy Developer Platform deployment (GPU not published), with a first-frame anchor made by GPT Image through Comfy Router. Xólotl runs the same character-swap graph without any closed model.
+
+## Install scripts, checked 2026-11-01
+
+- `scripts/install-nodes.sh` run against an empty ComfyUI root installed `custom_nodes/h3_character_swap` at `0670e4f`; `diff -r` against the pack that produced every take in this document: identical.
+- Every file `scripts/install-models.sh` fetches was HEAD-checked on Hugging Face at its pinned revision (HTTP 200): H3 ref2va fp8 21.0 GB, Qwen3-VL text encoder 15.7 GB, video VAE 5.2 GB, audio VAE 0.6 GB, SAM 3.1 1.7 GB, swap LoRA v1.5 0.2 GB, turbo LoRA 2.0 GB (46.4 GB for the default set); optional int8 convrot 21.0 GB and Singularity v1.3 w4a8 11.8 GB.
+
