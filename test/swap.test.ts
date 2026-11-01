@@ -78,8 +78,9 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.equal(bare.restore, undefined);
   assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
   assert.deepEqual(bare["809"].inputs.video, ["808", 0], "and the result is saved at its canvas size");
-  for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "box"]) assert.equal(bare[id], undefined, `${id} goes too`);
-  assert.ok(!/\["(fit|fit0|restore|box|\d+a)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
+  for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "107a", "box", "map"]) assert.equal(bare[id], undefined, `${id} goes too`);
+  assert.deepEqual(bare["110"].inputs.masks, ["107", 0], "the pack tracks the person on its own canvas");
+  assert.ok(!/\["(fit|fit0|restore|box|map|\d+a)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
 });
 
 test("gives the result back at the clip's own size through Xólotl's nodes", () => {
@@ -102,6 +103,11 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.deepEqual(graph.box.inputs.fit, ["fit0", 1]);
     assert.deepEqual(graph.fit.inputs.crop, ["box", 0]);
     assert.equal(graph.box.class_type, "XolotlPersonBox");
+    // The person is tracked once: the first pass's masks go onto the crop's canvas, then the pack grows them.
+    assert.equal(graph.map.class_type, "XolotlMapMasks");
+    assert.deepEqual(graph.map.inputs, { masks: ["107a", 0], first: ["fit0", 1], fit: ["fit", 1] });
+    assert.deepEqual(graph["110"].inputs.masks, ["map", 0]);
+    assert.deepEqual(graph["107a"].inputs.masks, ["106a", 0]);
   }
 });
 

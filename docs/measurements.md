@@ -61,7 +61,20 @@ The whole frame on a 0.5 MP canvas gives the person 67 % of their pixels per sid
 | 1920×1080 | 844×863 | 1190×1080 at (364, 0) | 736×672 | **0.618** instead of 0.474 | 48.74 dB | within 2 px |
 | 720×1280 | 318×1023 | the whole frame | 512×928 | 0.711, unchanged | 48.59 dB | within 2 px |
 
-Every plane registers at 0, 0 and the output has the clip's size, frames and sound. The crop's canvas may be a little bigger than the whole frame's (494 k vs 459 k pixels for the terrace clip: 8 % more model work); the geometry alone says a standing person up to 80 % of a 1080p frame's height gets their native resolution at the same work. The cost is the first pass's tracking: about the tracking time again. Not yet measured on the GPU.
+Every plane registers at 0, 0 and the output has the clip's size, frames and sound. The geometry alone says a standing person up to 80 % of a 1080p frame's height gets their native resolution for the same canvas.
+
+On the GPU, the terrace take with the first version of the framing (the person tracked twice, once on the whole frame and once on the crop; same clip, character, seed and recipe as the 5 min 16 s take above):
+
+| | Whole frame | Framed |
+|---|---|---|
+| Canvas | 896×512, 16 576 tokens, 8 138 regenerated | 608×800, 17 575 tokens, 10 683 regenerated |
+| Sampling | 39.75 s per step | 47.28 s per step |
+| ComfyUI, cold start | 5 min 16 s | 6 min 00 s |
+| Fine detail on the person (Laplacian of Y, full size) | 6.13 | 6.80, 1.11× |
+| Background outside the person | 49.68 dB | 49.65 dB |
+| Jacket Cb / Cr | 121.83 / 132.15 | 121.61 / 132.65 |
+
+The person fills 60 % of this frame, so the gain is modest and the crop's canvas regenerates 31 % more tokens: a step costs 19 % more. The two trackings cost 22 s each. The second version removes the second tracking (the first pass's masks are carried onto the crop's canvas, IoU with the mask drawn there above 0.97 on CPU) and never scales a crop above its native resolution; its GPU time is pending.
 
 Through the app (`scripts/check-take.py`, the 5.1 s take above, before *Frame the Person*): 1344×768 and 122 frames, the same count as F. On the 44.7 % of the frame the swap left alone, the result matches the clip at 49.68 / 53.65 / 53.62 dB with biases under 0.03 levels, and that background's gradient is 1.03 times the clip's: as sharp as the original. The jacket reads 121.83 / 132.15 against 121.78 / 132.07 for F.
 

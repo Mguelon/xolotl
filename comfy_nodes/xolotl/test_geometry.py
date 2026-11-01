@@ -12,8 +12,11 @@ assert fit(1344, 768, "480") == {"canvas": [896, 512], "box": [0, 0, 896, 512]}
 # 1080p keeps the whole frame; the 18 leftover columns are padded, split evenly.
 assert fit(1920, 1080, "480") == {"canvas": [928, 512], "box": [8, 0, 910, 512]}
 assert fit(1080, 1920, "480") == {"canvas": [512, 928], "box": [0, 8, 512, 910]}
-# A clip already on the grid and within the budget comes back as it is.
+# A clip already on the grid and within the budget comes back as it is; a small one is not scaled up.
 assert fit(928, 512, "480") == {"canvas": [928, 512], "box": [0, 0, 928, 512]}
+assert fit(640, 360, "480") == {"canvas": [640, 384], "box": [0, 12, 640, 360]}
+assert fit(640, 360, "768") == fit(640, 360, "480")
+assert fit(300, 620, "480") == {"canvas": [320, 640], "box": [10, 10, 300, 620]}
 
 for width, height in [(1344, 768), (1920, 1080), (1080, 1920), (1440, 1080), (640, 360), (2560, 1080), (720, 720),
                       (3840, 2160), (854, 480), (1280, 544)]:

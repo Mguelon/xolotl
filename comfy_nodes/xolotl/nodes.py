@@ -21,6 +21,7 @@ from pathlib import Path
 
 import folder_paths
 import torch
+import torch.nn.functional as F
 from comfy_api.latest._input_impl.video_types import VideoFromFile
 
 from .geometry import PIXEL_BUDGETS, fit_canvas, person_box
@@ -177,6 +178,43 @@ class XolotlFitVideo:
         return (VideoFromFile(str(output)), fit)
 
 
+class XolotlMapMasks:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "masks": ("MASK", {"tooltip": "The person's masks on the first pass's canvas (H3 Recover Masks)."}),
+            "first": ("XOLOTL_FIT", {"tooltip": "The first pass's Fit Clip on Canvas."}),
+            "fit": ("XOLOTL_FIT", {"tooltip": "The crop's Fit Clip on Canvas."}),
+        }}
+
+    RETURN_TYPES = ("MASK",)
+    RETURN_NAMES = ("masks",)
+    FUNCTION = "map"
+    CATEGORY = "Xólotl"
+    DESCRIPTION = ("The first pass's masks moved onto the crop's canvas, so the person is tracked once: the mask is "
+                   "only a region to regenerate and composite, grown by 64 px afterwards.")
+
+    def map(self, masks, first, fit):
+        (w0, h0), (bx0, by0, bw0, bh0) = first["canvas"], first["box"]
+        (w1, h1), (bx1, by1, bw1, bh1) = fit["canvas"], fit["box"]
+        if tuple(masks.shape[1:3]) != (h0, w0):
+            raise ValueError(f"Masks {tuple(masks.shape[1:3])} are not on the first canvas {h0}x{w0}.")
+        cx, cy, cw, ch = fit.get("crop") or [0, 0, fit["width"], fit["height"]]
+        # The crop in the first canvas's pixels (fractional), sampled onto the crop's box with bilinear filtering.
+        sx, sy = bw0 / first["width"], bh0 / first["height"]
+        x0, y0, x1, y1 = bx0 + cx * sx, by0 + cy * sy, bx0 + (cx + cw) * sx, by0 + (cy + ch) * sy
+        us = (torch.arange(bw1, dtype=torch.float32) + 0.5) / bw1 * (x1 - x0) + x0
+        vs = (torch.arange(bh1, dtype=torch.float32) + 0.5) / bh1 * (y1 - y0) + y0
+        grid = torch.stack(torch.meshgrid(vs / h0 * 2 - 1, us / w0 * 2 - 1, indexing="ij")[::-1], dim=-1)  # x, y in -1..1
+        out = torch.zeros((masks.shape[0], h1, w1), dtype=torch.float32)
+        for start in range(0, masks.shape[0], 32):
+            chunk = masks[start:start + 32].float().unsqueeze(1)
+            sampled = F.grid_sample(chunk, grid.unsqueeze(0).expand(chunk.shape[0], -1, -1, -1), mode="bilinear",
+                                    padding_mode="zeros", align_corners=False)
+            out[start:start + 32, by1:by1 + bh1, bx1:bx1 + bw1] = sampled[:, 0]
+        return (out.clamp(0, 1),)
+
+
 class XolotlRestoreSize:
     @classmethod
     def INPUT_TYPES(cls):
@@ -274,7 +312,8 @@ class XolotlPersonBox:
 
 
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
-                       "XolotlRestoreSize": XolotlRestoreSize}
+                       "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
+                              "XolotlMapMasks": "Xólotl · Masks onto the Crop",
                               "XolotlRestoreSize": "Xólotl · Restore Clip Size"}

@@ -142,6 +142,7 @@ def main():
         first = ((((xx + 0.5 - cx) / rx) ** 2 + ((yy + 0.5 - cy) / ry) ** 2) <= 1).float().expand(count, -1, -1)
         began = time.time()
         crop, summary = nodes.XolotlPersonBox().frame(first, fit, 0.2, 9 / 16, 16 / 9, 0.5)
+        first_fit = fit
         fitted, fit = nodes.XolotlFitVideo().fit(clip, args.resolution, crop)
         prepared = pack.LabsH3PrepareVideo().prepare(fitted, args.resolution, args.duration)
         report["frame_seconds"] = round(time.time() - began, 2)
@@ -159,6 +160,13 @@ def main():
     yy, xx = torch.meshgrid(torch.arange(canvas_h), torch.arange(canvas_w), indexing="ij")
     ellipse = ((((xx + 0.5 - cx) / rx) ** 2 + ((yy + 0.5 - cy) / ry) ** 2) <= 1).float()
     masks = ellipse.expand(prepared[4], -1, -1)  # as long as the pack's H3 window, like Expand Mask's
+    if args.frame_person:  # the first pass's masks moved onto the crop's canvas, against the ellipse drawn there
+        mapped = nodes.XolotlMapMasks().map(first, first_fit, fit)[0] > 0.5
+        drawn = ellipse > 0.5
+        iou = float((mapped[0] & drawn).sum() / (mapped[0] | drawn).sum())
+        report["mapped_masks"] = {"shape": list(mapped.shape), "iou_with_drawn": round(iou, 4)}
+        if iou < 0.97:
+            raise SystemExit(f"mapped masks disagree with the ellipse on the crop's canvas: IoU {iou:.3f}")
     frames = frames[:count]
     marked = frames.clone()
     marked[:, round(cy) - 16:round(cy) + 16, round(cx) - 16:round(cx) + 16] = torch.tensor([1.0, 0.0, 0.0])

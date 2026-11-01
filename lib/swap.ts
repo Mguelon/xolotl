@@ -67,8 +67,9 @@ export const PREFERRED = {
   vae: ["minimax_h3_video_vae_int8_convrot.safetensors", "minimax_h3_video_vae_fp16.safetensors"],
 };
 
-/** The first pass that frames the person: the whole clip on the canvas, the pack's tracking, the person's box. */
-const FIRST_PASS = ["box", "106a", "105a", "104a", "103a", "102a", "31a", "fit0"];
+/** The first pass that frames the person: the whole clip on the canvas, the pack's tracking, the person's box, and
+ * the masks carried onto the crop (the person is tracked once). */
+const FIRST_PASS = ["map", "box", "107a", "106a", "105a", "104a", "103a", "102a", "31a", "fit0"];
 
 /**
  * Runs the template's recipe with what is installed: a model file ComfyUI does not have gives way to the next one it
@@ -87,6 +88,7 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   if (graph.restore && !installed.xolotlNodes) {
     bypass(graph, "restore", ["808", 0]);
     bypass(graph, "fit", graph.fit.inputs.video);
+    graph["110"].inputs.masks = ["107", 0]; // the pack tracks the person on its own canvas
     for (const id of FIRST_PASS) delete graph[id];
   }
   return graph;

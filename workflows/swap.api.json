@@ -157,7 +157,7 @@
     },
     "class_type": "ImageFromBatch",
     "_meta": {
-      "title": "Detection frame · first frame"
+      "title": "Detection frame · first frame · only without Xólotl's nodes"
     }
   },
   "103": {
@@ -180,7 +180,7 @@
     },
     "class_type": "SAM3_Detect",
     "_meta": {
-      "title": "Detect individual people"
+      "title": "Detect individual people · only without Xólotl's nodes"
     }
   },
   "104": {
@@ -194,7 +194,7 @@
     },
     "class_type": "H3CharacterSwapSelectSubject",
     "_meta": {
-      "title": "Select the person to replace"
+      "title": "Select the person to replace · only without Xólotl's nodes"
     }
   },
   "105": {
@@ -221,7 +221,7 @@
     },
     "class_type": "SAM3_VideoTrack",
     "_meta": {
-      "title": "Track selected person"
+      "title": "Track selected person · only without Xólotl's nodes"
     }
   },
   "106": {
@@ -234,7 +234,7 @@
     },
     "class_type": "SAM3_TrackToMask",
     "_meta": {
-      "title": "Selected track → mask"
+      "title": "Selected track → mask · only without Xólotl's nodes"
     }
   },
   "107": {
@@ -267,7 +267,7 @@
     },
     "class_type": "H3CharacterSwapRecoverMasks",
     "_meta": {
-      "title": "Recover empty frames · same as app"
+      "title": "Recover empty frames · same as app · only without Xólotl's nodes"
     }
   },
   "110": {
@@ -278,7 +278,7 @@
       ],
       "expansion_px": 64,
       "masks": [
-        "107",
+        "map",
         0
       ],
       "images": [
@@ -716,6 +716,59 @@
     "class_type": "XolotlPersonBox",
     "_meta": {
       "title": "Xólotl · frame the person"
+    }
+  },
+  "107a": {
+    "inputs": {
+      "source_frames": [
+        "31a",
+        5
+      ],
+      "recover_empty_frames": true,
+      "masks": [
+        "106a",
+        0
+      ],
+      "images": [
+        "31a",
+        0
+      ],
+      "model": [
+        "100",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ],
+      "selection": [
+        "104a",
+        1
+      ]
+    },
+    "class_type": "H3CharacterSwapRecoverMasks",
+    "_meta": {
+      "title": "Masks on every frame · first pass"
+    }
+  },
+  "map": {
+    "inputs": {
+      "masks": [
+        "107a",
+        0
+      ],
+      "first": [
+        "fit0",
+        1
+      ],
+      "fit": [
+        "fit",
+        1
+      ]
+    },
+    "class_type": "XolotlMapMasks",
+    "_meta": {
+      "title": "Xólotl · the first pass's masks onto the crop"
     }
   }
 }
