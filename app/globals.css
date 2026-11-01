@@ -75,6 +75,7 @@ a { color: inherit; text-decoration: none; }
 .pill.bad .dot { background: var(--danger); }
 .pill strong { color: var(--text); font-weight: 600; }
 .ghost {
+  white-space: nowrap;
   padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line);
   font-size: 12.5px; color: var(--text-2); transition: border-color .2s, color .2s;
 }
@@ -95,6 +96,11 @@ a { color: inherit; text-decoration: none; }
   .tagline { grid-column: 1 / -1; grid-row: 2; }
   .top-right { justify-self: end; }
   .pill .gpu { display: none; }
+}
+@media (max-width: 480px) {
+  .top-right { gap: 6px; }
+  .top-right .ghost { padding-left: 9px; padding-right: 9px; }
+  .top-right .ghost .label { display: none; }
 }
 
 .eyebrow {

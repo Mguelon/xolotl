@@ -216,6 +216,16 @@ export function AppRunner() {
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
+  /** The strip's one-word status in the interface language; unknown states show as the server names them. */
+  function statusLabel(status: string): string {
+    if (status === "queued" || status === "pending") return t.st_queued;
+    if (ACTIVE.has(status)) return t.st_running;
+    if (status === "succeeded") return t.st_succeeded;
+    if (CANCELED.has(status)) return t.st_canceled;
+    if (status === "failed" || status === "error" || status === "expired") return t.st_failed;
+    return status;
+  }
+
   /** First click arms the control, the second one deletes the take and everything stored with it. */
   async function removeTake(id: string) {
     if (confirmDelete !== id) { setConfirmDelete(id); return; }
@@ -281,7 +291,7 @@ export function AppRunner() {
               : `${health.missingNodes.length + health.missingModels.length} missing`}
           </span>
           <button type="button" className="ghost lang" onClick={toggleLang} aria-label="Language">{t.lang}</button>
-          <a className="ghost" href={REPO} target="_blank" rel="noreferrer">{t.source} ↗</a>
+          <a className="ghost" href={REPO} target="_blank" rel="noreferrer" aria-label={t.source}><span className="label">{t.source} </span>↗</a>
         </div>
       </header>
 
@@ -386,7 +396,7 @@ export function AppRunner() {
                       <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
                       <span>
                         <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden /></span>
-                        <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : statusLabel(take.status)} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                       </span>
                     </button>
                     {!(ACTIVE.has(take.status) && !CANCELED.has(take.status)) && (
@@ -404,7 +414,7 @@ export function AppRunner() {
 
       <footer className="foot">
         <span>{t.built_with}</span>
-        <span><b>RTX A4000 16 GB</b> · 5 s at 480p: 8:55–11:30 measured</span>
+        <span><b>RTX A4000 16 GB</b> · {t.foot_measured}</span>
       </footer>
     </div>
   );
