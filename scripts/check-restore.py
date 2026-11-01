@@ -18,6 +18,7 @@ import argparse
 import importlib.util
 import json
 import math
+import resource
 import subprocess
 import sys
 import time
@@ -120,6 +121,7 @@ def main():
     began = time.time()
     prepared = pack.LabsH3PrepareVideo().prepare(fitted, args.resolution, args.duration)
     report["prepare_seconds"] = round(time.time() - began, 2)
+    report["rss_after_fit_prepare_mib"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
     frames, count = prepared[0], prepared[5]
     report["prepare"] = {"size": [prepared[2], prepared[3]], "source_frames": count, "h3_length": prepared[4]}
     if [prepared[2], prepared[3]] != fit["canvas"]:
@@ -173,6 +175,8 @@ def main():
         path.replace(target)
         snapshot(["-i", str(target)], out / f"{args.label}-{name}.png")
         report[name] = result
+    report["rss_self_mib"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024  # includes this check's own arrays
+    report["rss_ffmpeg_max_mib"] = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss // 1024
     (out / f"report-{args.label}.json").write_text(json.dumps(report, indent=1))
     print(json.dumps(report, indent=1))
 

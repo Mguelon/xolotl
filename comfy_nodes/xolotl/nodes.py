@@ -197,7 +197,7 @@ class XolotlRestoreSize:
         rescale = f",scale={width}:{height}:flags=bicubic,setsar=1" if fit["rescale"] else ""
         blur = f",gblur=sigma={feather}" if feather > 0 else ""
         graph = (
-            f"[0:v]{TIMELINE}{rescale},format=pix_fmts=yuv420p|yuvj420p[clip];"
+            f"[0:v]{TIMELINE}{rescale},trim=end_frame={count},format=pix_fmts=yuv420p|yuvj420p[clip];"
             f"[1:v]crop={box_w}:{box_h}:{x}:{y},split[c][a];"
             f"[c]scale={width}:{height}:flags=lanczos,format=gbrap[rgb];"
             f"[a]alphaextract,scale={width}:{height}:flags=bilinear{blur}[alpha];"
@@ -205,6 +205,7 @@ class XolotlRestoreSize:
             "format=yuva420p[swap];"
             "[clip][swap]overlay=x=0:y=0:format=yuv420[out]"
         )
+        # The clip is cut in the graph, not with -frames:v: that stops ffmpeg before the last audio packet is flushed.
         tags = [part for flag, key in COLOR_FLAGS if color.get(key) not in (None, "", "unknown", "reserved")
                 for part in (flag, color[key])]
         audio = ["-map", "0:a:0", "-af", f"asetpts=PTS-STARTPTS,atrim=end={count / FPS:.6f}", "-c:a", "aac",
@@ -212,7 +213,7 @@ class XolotlRestoreSize:
         output = _workdir() / f"restored-{uuid.uuid4().hex}.mp4"
         _ffmpeg_fed([*_input(fit), "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{canvas_w}x{canvas_h}",
                      "-r", str(FPS), "-i", "pipe:0", "-filter_complex", graph, "-map", "[out]", *audio,
-                     "-frames:v", str(count), "-c:v", "libx264", "-preset", "medium", "-crf", "16", *tags,
+                     "-c:v", "libx264", "-preset", "medium", "-crf", "16", *tags,
                      "-movflags", "+faststart", str(output)], _rgba(images[:count], masks[:count]))
         return (VideoFromFile(str(output)),)
 
