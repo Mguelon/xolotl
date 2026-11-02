@@ -13,7 +13,9 @@ type Timing = { trackingPerSecond: number; first: Window; later: Window };
 export const TIMING: Record<SwapSize, Timing | null> = {
   // 10 s take through the app (ed24325b): 84 s preparing and tracking, window 1 in 4:00 (42.8 s per step),
   // window 2 in 4:22 (51 s per step with its history), 675 s in all (ComfyUI execution_start → execution_success).
-  "480p": { trackingPerSecond: 8.5, first: { fixed: 100, perStep: 42.8 }, later: { fixed: 117, perStep: 51 } },
+  // With the person framed (d431fad3, 5.1 s) a step is 47.4 s: the crop's canvas regenerates more tokens; the later
+  // windows' 56.5 is that 51 scaled the same way, not yet measured.
+  "480p": { trackingPerSecond: 8.5, first: { fixed: 100, perStep: 47.4 }, later: { fixed: 117, perStep: 56.5 } },
   "768p": null,
 };
 

@@ -74,7 +74,7 @@ On the GPU, the terrace take with the first version of the framing (the person t
 | Background outside the person | 49.68 dB | 49.65 dB |
 | Jacket Cb / Cr | 121.83 / 132.15 | 121.61 / 132.65 |
 
-The person fills 60 % of this frame, so the gain is modest and the crop's canvas regenerates 31 % more tokens: a step costs 19 % more. The two trackings cost 22 s each. The second version removes the second tracking (the first pass's masks are carried onto the crop's canvas, IoU with the mask drawn there above 0.97 on CPU) and never scales a crop above its native resolution; its GPU time is pending.
+The person fills 60 % of this frame, so the gain is modest and the crop's canvas regenerates 31 % more tokens: a step costs 19 % more. The two trackings cost 22 s each. The second version, now the default, tracks the person once and carries the first pass's masks onto the crop's canvas (IoU with the mask drawn there 0.998 on CPU), and never scales a crop above its native resolution. The same take: **5 min 34 s** (334.4 s), one tracking, 47.44 s per step, fine detail on the person 6.87 (1.12×), background 49.64 dB, jacket 121.51 / 132.83, sound 5.083 s with 5.083 s of picture. Framing costs this clip 19 s, 6 %, for 12 % more fine detail on the person; a person who fills less of the frame gains more for the same cost.
 
 Through the app (`scripts/check-take.py`, the 5.1 s take above, before *Frame the Person*): 1344×768 and 122 frames, the same count as F. On the 44.7 % of the frame the swap left alone, the result matches the clip at 49.68 / 53.65 / 53.62 dB with biases under 0.03 levels, and that background's gradient is 1.03 times the clip's: as sharp as the original. The jacket reads 121.83 / 132.15 against 121.78 / 132.07 for F.
 

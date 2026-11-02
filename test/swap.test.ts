@@ -173,9 +173,9 @@ test("counts windows as the pack plans them", () => {
 });
 
 test("estimates minutes from the measured tracking, window and step times", () => {
-  assert.deepEqual(estimateMinutes("480p", 5), [4, 6]);
-  assert.deepEqual(estimateMinutes("480p", 5.1), [4, 6]);
-  assert.deepEqual(estimateMinutes("480p", 10), [10, 13]);
-  assert.deepEqual(estimateMinutes("480p", 5, 20), [14, 19]);
+  assert.deepEqual(estimateMinutes("480p", 5), [4, 7]);
+  assert.deepEqual(estimateMinutes("480p", 5.1), [4, 7]);
+  assert.deepEqual(estimateMinutes("480p", 10), [10, 14]);
+  assert.deepEqual(estimateMinutes("480p", 5, 20), [16, 20]);
   assert.equal(estimateMinutes("768p", 5), null, "not measured with this recipe yet");
 });
