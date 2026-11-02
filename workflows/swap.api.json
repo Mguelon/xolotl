@@ -579,7 +579,7 @@
     "inputs": {
       "feather": 6.0,
       "images": [
-        "807",
+        "lp_frames",
         0
       ],
       "masks": [
@@ -816,6 +816,170 @@
     },
     "_meta": {
       "title": "Xólotl · Grey Mannequin for the Motion"
+    }
+  },
+  "lp_pair": {
+    "class_type": "XolotlNeutralFace",
+    "inputs": {
+      "swap": [
+        "807",
+        0
+      ],
+      "clip": [
+        "31",
+        0
+      ],
+      "source_frames": [
+        "31",
+        5
+      ]
+    },
+    "_meta": {
+      "title": "Xólotl · The Clip's Calmest Face First"
+    }
+  },
+  "lp_models": {
+    "class_type": "DownloadAndLoadLivePortraitModels",
+    "inputs": {
+      "precision": "auto"
+    },
+    "_meta": {
+      "title": "LivePortrait models"
+    }
+  },
+  "lp_detector": {
+    "class_type": "LivePortraitLoadFaceAlignmentCropper",
+    "inputs": {
+      "face_detector": "blazeface_back_camera",
+      "landmarkrunner_device": "CPU",
+      "face_detector_device": "cuda",
+      "face_detector_dtype": "fp16",
+      "keep_model_loaded": true
+    },
+    "_meta": {
+      "title": "LivePortrait face detector (BlazeFace, face-alignment)"
+    }
+  },
+  "lp_crop_swap": {
+    "class_type": "LivePortraitCropper",
+    "inputs": {
+      "pipeline": [
+        "lp_models",
+        0
+      ],
+      "cropper": [
+        "lp_detector",
+        0
+      ],
+      "source_image": [
+        "lp_pair",
+        0
+      ],
+      "dsize": 512,
+      "scale": 2.3,
+      "vx_ratio": 0,
+      "vy_ratio": -0.125,
+      "face_index": 0,
+      "face_index_order": "large-small",
+      "rotate": true
+    },
+    "_meta": {
+      "title": "LivePortrait · the character's face"
+    }
+  },
+  "lp_crop_clip": {
+    "class_type": "LivePortraitCropper",
+    "inputs": {
+      "pipeline": [
+        "lp_models",
+        0
+      ],
+      "cropper": [
+        "lp_detector",
+        0
+      ],
+      "source_image": [
+        "lp_pair",
+        1
+      ],
+      "dsize": 512,
+      "scale": 2.3,
+      "vx_ratio": 0,
+      "vy_ratio": -0.125,
+      "face_index": 0,
+      "face_index_order": "large-small",
+      "rotate": true
+    },
+    "_meta": {
+      "title": "LivePortrait · the clip's face"
+    }
+  },
+  "lp": {
+    "class_type": "LivePortraitProcess",
+    "inputs": {
+      "pipeline": [
+        "lp_models",
+        0
+      ],
+      "crop_info": [
+        "lp_crop_swap",
+        1
+      ],
+      "source_image": [
+        "lp_pair",
+        0
+      ],
+      "driving_images": [
+        "lp_crop_clip",
+        0
+      ],
+      "lip_zero": false,
+      "lip_zero_threshold": 0.03,
+      "stitching": true,
+      "delta_multiplier": 1,
+      "mismatch_method": "constant",
+      "relative_motion_mode": "source_video_smoothed",
+      "driving_smooth_observation_variance": 3e-06
+    },
+    "_meta": {
+      "title": "LivePortrait · the clip's gestures"
+    }
+  },
+  "lp_paste": {
+    "class_type": "LivePortraitComposite",
+    "inputs": {
+      "source_image": [
+        "lp_pair",
+        0
+      ],
+      "cropped_image": [
+        "lp",
+        0
+      ],
+      "liveportrait_out": [
+        "lp",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "LivePortrait · pasted back"
+    }
+  },
+  "lp_frames": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "lp_paste",
+        0
+      ],
+      "batch_index": 1,
+      "length": [
+        "31",
+        5
+      ]
+    },
+    "_meta": {
+      "title": "Without the calm reference frame"
     }
   }
 }

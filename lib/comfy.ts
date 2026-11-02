@@ -160,7 +160,7 @@ async function whereIs(take: TakeMeta): Promise<{ stage: Stage | null; remaining
   const { size, seconds } = take.settings;
   const elapsed = take.startedAt ? Math.max(0, (Date.now() - Date.parse(take.startedAt)) / 1000) : 0;
   const stage = await comfyStage(take.settings.steps ?? DEFAULT_STEPS, windowCount(seconds), elapsed);
-  const remaining = stage ? remainingSeconds(size as SwapSize, seconds, stage, elapsed) : null;
+  const remaining = stage ? remainingSeconds(size as SwapSize, seconds, stage, elapsed, take.settings.gestures ?? false) : null;
   return { stage, remainingSeconds: remaining === null ? null : Math.round(remaining) };
 }
 

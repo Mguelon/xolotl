@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Downloads the open-weights models Xólotl's workflow loads, into your ComfyUI models/ folder.
 # Revisions are pinned to what Xólotl was tested with. Read each model card's licence before use
-# (MiniMax H3, its turbo LoRA and the swap LoRA: MiniMax H3 Community License; SAM 3.1: its own licence; Veda: MIT).
+# (MiniMax H3, its turbo LoRA and the swap LoRA: MiniMax H3 Community License; SAM 3.1: its own licence; Veda: MIT;
+# LivePortrait: MIT. Its face detector's weights, BlazeFace and face-alignment's 2DFAN4, about 97 MB, download on the
+# first take with gestures.)
 #   usage: scripts/install-models.sh /path/to/ComfyUI [--fp8]
 #   default: the int8 "convrot" H3 and video VAE, the files Comfy-Org recommends when ComfyUI runs PyTorch cu130
 #            (CUDA 13 kernels) — about 44 GB in all.
@@ -29,4 +31,9 @@ get Comfy-Org/MiniMax-H3 loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.sa
 get Comfy-Org/sam3.1 checkpoints/sam3.1_multiplex_fp16.safetensors 7bb8374780a725b4353ed31f3a9395c9742b5621 "$M"   # 1.75 GB
 get akatz-ai/MiniMax-H3-Character-Swap-LoRA h3_character_swap_v1.5.safetensors 96ea3407b230b6f7df71c58c70e31df96bd7e533 "$M/loras"   # 0.16 GB
 get Veda-Sparse/Minimax-H3-R2VA-Veda-Preview minimax_h3_r2va_veda_preview_fp8.safetensors 1598b407905b7c0af85aa0c13acdfa6f01ff2982 "$M/veda"   # 0.28 GB
+LP=59f30f36d7b791929c25437df7461d5b0e0010b1
+for f in appearance_feature_extractor.safetensors motion_extractor.safetensors warping_module.safetensors \
+         spade_generator.safetensors stitching_retargeting_module.safetensors landmark.onnx; do
+  get Kijai/LivePortrait_safetensors "$f" $LP "$M/liveportrait"   # 0.64 GB in all, for the gestures pass
+done
 echo "models are in $M — restart ComfyUI if it was running, then: npm run doctor"

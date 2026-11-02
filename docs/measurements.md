@@ -171,6 +171,8 @@ With the face already big in the sheet the identity was there, and the close-up 
 
 The whole 13 s with the close-up, through the app (59b8ef94, 17 min 12 s): like the character **0.43**, like the clip 0.29, closer to the clip in 27 % of the 26 sampled frames, mouth +0.66 (spread 0.051). Frame by frame (`PER_FRAME=1 scripts/identity-follow.py`) the character holds from 0 to 3.0 s and from 7.0 s on, and between 3.5 and 6.5 s, the dancer's turn, the take shows the performer's face (0.60 like the clip at 4.0 s), her dark wine hair and her cropped top with the belly showing, in the character's yellow; the wine hair comes back on the character's head at 8-9.5 s. The masks were not the cause: tapped out of the graph (`scripts/bake-run.mjs --tap 107a --tap 110`), SAM's mask and the grown one cover her head, hair and belly in every frame. H3 regenerated them and copied the performer's looks from the clip it follows for the motion.
 
+Nor the windows. For 13 s the pack plans three (`planning.py`: 0-123, then 123-246 and 246-311, each after 18 frames of the window before as history), so the slip starts inside the first window, before any cut, and the history carries it into the second until 6.5 s. The first window run alone (`r124-sin-corte`: 124 frames, no cut, the same seed) gives the same frames: at 3.5 s 0.28 like the character and 0.32 like the clip, at 4.0 s 0.20 and 0.59 (0.19 and 0.60 in the 13 s take), at 4.5 s 0.31 and 0.54. The 4.8 s take that held through the turn (`renata48-recorte`) differs from that window only in its last 9 frames, the last one repeated instead of the dance going on: without the mannequin the turn is a coin toss.
+
 D3voz's OPENjutsu hides those looks from H3: the person in the motion reference becomes a grey figure, the shading kept and blurred, the colours gone (`H3GreyMannequins`, MIT). Xólotl's `XolotlMannequin` does the same with their numbers (grey = 0.45 + 0.45 × luma, the body's luma blurred with sigma 8 px on the canvas, the face's green channel with 5 % of the face's height), only in the reference H3 reads: the result is still laid over the clip's own frames. Same seed and settings, the whole 13 s:
 
 | 13 s | Like the character | Like the clip | Frames closer to the clip | Mouth | ComfyUI |
@@ -190,6 +192,23 @@ With the mannequin the character holds all the way: her auburn hair, her freckle
 A grey face, sharp or with the mouth drawn dark, doesn't bring the pout back; a face left in colour brings part of it back and the performer's face with it. Mike's choice (2026-11-02): the mannequin by default, and a **Copy gestures** switch that turns it off.
 
 The first version took 46 s for the 13 s on the CPU, one frame after another (YuNet keeps state per call). Blurring the body at half size, looking for faces at half size, painting only the person's box and the faces' detail only around each face, with one YuNet per thread writing straight into the result: 4.3 s with 16 threads (5.5 s with 8), the same frames within 0.07/255 on average (99.9th percentile 2.3/255).
+
+### The gestures back (2026-11-02)
+
+The mannequin's take keeps the character and loses the pouts. The two entries that give the gestures back, OPENjutsu's *Fix faces → Follow the mouth* and H3 Recast's *Lip repair*, both run a second H3 pass on the face (ComfyUI-H3-FaceRefine): 16 to 28 minutes more per take by their own figures. LivePortrait moves a face with another face's expressions and takes seconds; none of the 21 entries read in full uses it. Kijai's ComfyUI-LivePortraitKJ (MIT; LivePortrait's weights, MIT) over the mannequin's 13 s take, the clip as the driving face, its BlazeFace / face-alignment detector (InsightFace's models are non-commercial; MediaPipe 1.2 on this Python lacks the module the node imports):
+
+| 13 s, the mannequin's take | Like the character | Like the clip | Mouth | The pout at 0.5 s | The open mouth at 1.7 s |
+|---|---|---|---|---|---|
+| no LivePortrait | 0.67 | 0.08 | +0.14 | no | no |
+| LivePortrait, relative to the clip's first frame | 0.62 | 0.06 | +0.11 | no | yes |
+| LivePortrait, absolute | 0.64 | 0.07 | +0.11 | no | no |
+| LivePortrait, relative to a calm frame of the clip | 0.59 | 0.06 | +0.19 | **yes** | **yes** |
+
+Relative motion copies each frame's expression as a change from one frame of the clip, its first by default, and this clip opens on a pout: the pout was the face at rest, so it never passed on. Put first a frame where the performer is calm (and the swap's frame at the same moment), and the pouts, the open mouth and a wink come through on the character's own face; the kiss with the head tilted at 11.8 s does not. Nothing shows at the paste's edge, and frames where the cropper finds no face keep the swap as it is. The mouth measure moves less than the eye sees (+0.19): it reads the mouth's width, and a pout pushes the lips forward more than it narrows them.
+
+`XolotlNeutralFace` picks that frame on its own: YuNet's five points on every other frame of the clip, and among the faces that look at the camera (the nose within 0.12 eye distances of the eyes' middle, the eyes level within 0.15), the one whose mouth width over eye distance is the median. On this clip it picks frame 198, a calm closed mouth like frame 120 picked by eye, in 1.3 s (frame 192 on the 480p canvas, inside the take). Mike's choice (2026-11-02): the gestures pass on by default, the **Copy gestures** switch turns it off.
+
+In the template the pass runs on the canvas, between the pack's assembled frames and *Restore Clip Size*, so the clip's frames on the same canvas drive it frame for frame and the swap is encoded once. The whole 13 s through the app (331ce285): **20 min 12 s** against 17 min 21 s without it, like the character 0.57, like the clip 0.07, closer to the clip in 0 % of the frames, mouth +0.12; the open-mouthed pout at 1.7 s, the narrowed eyes at 9.6 s and the wink at 12.2 s come through, the pout at 0.5 s softer than on the full-size video, and the tilted kiss at 11.8 s not.
 
 ## 768p with the default recipe
 

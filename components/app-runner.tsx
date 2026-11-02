@@ -100,7 +100,7 @@ export function AppRunner() {
   const [size, setSize] = useState<SwapSize>("480p");
   const [direction, setDirection] = useState("");
   const [seed, setSeed] = useState("");
-  const [gestures, setGestures] = useState(false);
+  const [gestures, setGestures] = useState(true);
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
@@ -355,7 +355,7 @@ export function AppRunner() {
             <span className="switch-text"><b>{t.gestures}</b><small>{gestures ? t.gestures_on : t.gestures_off}</small></span>
           </label>
           {(() => {
-            const estimate = estimateMinutes(size, video ? seconds : 5);
+            const estimate = estimateMinutes(size, video ? seconds : 5, DEFAULT_STEPS, gestures);
             return estimate ? <p className="estimate">{t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1]))}</p> : null;
           })()}
           <button type="button" className="run" disabled={!video || !character || busy} onClick={() => void transform()}>{busy ? t.working : t.run}</button>
@@ -433,7 +433,7 @@ export function AppRunner() {
                 )}
                 {(active || busy) && !error && remaining === null && stage?.name !== "finish" && (() => {
                   const settings = job?.take?.settings;
-                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS) : estimateMinutes(size, seconds);
+                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS, settings.gestures ?? false) : estimateMinutes(size, seconds);
                   return <span>{estimate ? t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1])) : t.eta_hint}</span>;
                 })()}
               </div>
