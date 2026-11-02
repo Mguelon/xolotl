@@ -154,11 +154,14 @@ test("drops the first-frame nodes when there is none", () => {
   assert.ok(template.anchor_image, "the template stays untouched");
 });
 
-test("starts the prompt with the workflow's instruction", () => {
+test("names the person to replace and what to keep, then the direction", () => {
   assert.equal(
-    swapPrompt("  keep the glasses  ", false),
-    "Replace the selected person in <Video 1> with the character in <Picture 1>. Preserve the source performance, scene and audio timing. keep the glasses",
+    swapPrompt("  keep the glasses  ", false, " the woman with long brown hair "),
+    "Replace the woman with long brown hair in <Video 1> with the character in <Picture 1>, keeping that person's position, "
+    + "scale, pose, movements, gaze, blinking, facial expressions and visible mouth movements moment by moment. "
+    + "Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. keep the glasses",
   );
+  assert.match(swapPrompt("x", false), /^Replace the person in <Video 1>/, "no description: the person");
   assert.match(swapPrompt("", true), /Start from the first frame in <Picture 2>\.$/);
 });
 
@@ -169,8 +172,9 @@ test("reads and checks the settings", () => {
     return data;
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
-    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", steps: 4, turbo: true,
+    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true,
   });
+  assert.equal(readSettings(form({ seconds: "5", size: "480p", person: "  the man in red  " })).person, "the man in red");
   assert.ok(Number.isInteger(readSettings(form({ seconds: "5", size: "768p" })).seed));
   assert.deepEqual(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).steps, 20);
   assert.equal(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).turbo, false);

@@ -7,6 +7,7 @@ export type SwapSize = keyof typeof SIZES;
 
 const MAX_SEED = 2 ** 32 - 1;
 const MAX_DIRECTION = 500;
+const MAX_PERSON = 120;
 /**
  * The ref2v 4-step turbo LoRA's count: on the same clip and seed it kept the identity and colour of 8 and 20 steps
  * (docs/measurements.md). H3's own template runs 20 steps without a turbo LoRA.
@@ -19,6 +20,8 @@ export type SwapRequest = {
   character: unknown;
   anchor?: unknown;
   direction: string;
+  /** Who in the clip is replaced, as H3 should recognise them ("the woman with long brown hair"); "" = the person. */
+  person?: string;
   start: number;
   seconds: number;
   size: SwapSize;
@@ -29,10 +32,22 @@ export type SwapRequest = {
   turbo?: boolean;
 };
 
-export function swapPrompt(direction: string, withAnchor: boolean): string {
+export const DEFAULT_PERSON = "the person";
+
+/**
+ * H3's labels are the order of its references: the character image is <Picture 1> and the clip <Video 1> (the pack
+ * passes them that way; comfy/text_encoders/minimax.py). The person to replace is named, and what to keep is named one
+ * by one. The facial performance itself comes through when the direction describes the gesture ("she purses her lips
+ * and blows kisses"): with the generic list alone the body and hands followed the clip and the face stayed neutral
+ * (docs/measurements.md, "Facial expressions").
+ */
+export function swapPrompt(direction: string, withAnchor: boolean, person = ""): string {
+  const who = person.trim() || DEFAULT_PERSON;
   return [
-    "Replace the selected person in <Video 1> with the character in <Picture 1>.",
-    "Preserve the source performance, scene and audio timing.",
+    `Replace ${who} in <Video 1> with the character in <Picture 1>, keeping that person's position, scale, pose, movements,`
+    + " gaze, blinking, facial expressions and visible mouth movements moment by moment.",
+    "Keep the reference character's face, hair and clothing.",
+    "Preserve the scene and the audio timing.",
     withAnchor ? "Start from the first frame in <Picture 2>." : "",
     direction.trim(),
   ].filter(Boolean).join(" ");
@@ -124,7 +139,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     Object.assign(graph.veda.inputs, { generated_sparsity: sparsity, reference_sparsity: sparsity });
   }
   Object.assign(graph["801"].inputs, {
-    prompt: swapPrompt(request.direction, request.anchor !== undefined),
+    prompt: swapPrompt(request.direction, request.anchor !== undefined, request.person),
     seed: request.seed,
     steps: request.steps ?? DEFAULT_STEPS,
   });
@@ -146,6 +161,7 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   const size = String(form.get("size"));
   const seedText = String(form.get("seed") ?? "").trim();
   const direction = form.get("direction");
+  const person = form.get("person");
   const stepsText = String(form.get("steps") ?? "").trim();
   const turboText = String(form.get("turbo") ?? "").trim().toLowerCase();
   if (!Number.isFinite(start) || start < 0) throw new Error("Choose where the part starts.");
@@ -167,5 +183,6 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
     size: size as SwapSize,
     seed,
     direction: typeof direction === "string" ? direction.slice(0, MAX_DIRECTION) : "",
+    person: typeof person === "string" ? person.trim().slice(0, MAX_PERSON) : "",
   };
 }
