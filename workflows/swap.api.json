@@ -999,7 +999,7 @@
   "describe": {
     "inputs": {
       "clip": [
-        "describe_model",
+        "describe_detail",
         0
       ],
       "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph of three sentences; the first starts with \"The character is\". First sentence: their apparent age and build, their skin tone, their hair colour, length and style, their eye colour, and features such as freckles, glasses or make-up. Second sentence: every garment on the upper body with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans or a jacket that reaches the hips. Third sentence: the trousers, skirt or dress with its colour, type and fit. Do not mention the shoes or the feet, the background, the pose or the facial expression. For example: The character is a middle-aged man with a stocky build, olive skin, short curly black hair, brown eyes and a trimmed beard. He wears an open plaid flannel shirt over a white t-shirt, both reaching the belt of his trousers. His trousers are loose grey chinos.",
@@ -1052,6 +1052,19 @@
     "class_type": "StringTrim",
     "_meta": {
       "title": "The prompt without a trailing space"
+    }
+  },
+  "describe_detail": {
+    "inputs": {
+      "clip": [
+        "describe_model",
+        0
+      ],
+      "image_tokens": 1120
+    },
+    "class_type": "XolotlImageDetail",
+    "_meta": {
+      "title": "Gemma sees the picture at 1120 tokens, not 280 (Xólotl)"
     }
   }
 }

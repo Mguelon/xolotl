@@ -257,6 +257,23 @@ So Gemma's instruction changed, tried on the same four pictures before any take 
 
 Through the page with that instruction, only the clip and the picture chosen (60a47859, seed 1992313880 drawn by the app, 17 min 20 s): like the character 0.54, like the clip 0.11, the performer in 0 of 26 frames and 0 of 7 in the turn, mouth +0.64; no blot at the start, the sweater down through the turn and the lean followed to the end, as the take described by hand.
 
+Character sheets (a face close-up beside the full body, five presets from Higgsfield's gallery, one of them with a pink beehive and a black leather corset over a black shirt) are where that instruction fell short: through the page with the pink-haired one (cd9e8308, 17 min 27 s) the performer stayed out (like the character 0.51, like the clip 0.19, 0 of 26 frames), but Gemma had written *a black collared shirt* and no corset, and the corset showed only in the middle window, 3.5-6.5 s: what the description leaves out, each of H3's three windows decides on its own. The beehive came out flattened, being taller than the performer's silhouette.
+
+What was tried on the nine pictures (the four above and five sheets; everything in the measurements' `descripciones/`):
+
+| Gemma 4 E2B | Each picture | Renata's sweater | The sheets | The corset |
+|---|---|---|---|---|
+| the instruction above, Generate Text's 280 image tokens | 2 s | reaches the hips | a *long tunic* for track pants, the open jacket missed | no |
+| the same, thinking mode | 9-10 s | reaches the waist (eyes turned blue) | jackets and track pants right | no |
+| a list of garments first, then the description | 4 s | *covers the torso* | lengths made up (*ends at the shoulders*) | no |
+| Mike's question (*Describe exactly the type, colour and shape of this person's clothes, with precision, and also their facial features, hair, eye colour and other characteristics*), then a rewrite into three sentences | 8-9 s | to the upper hips | a blue tank top under an open shirt, distressed jeans; the blonde afro became *a faux-fur hat* | no |
+| the same with a third pass that checks the description against the picture | 16-20 s | to the upper hips | the check confirmed the hat | *a corset-like detail* in the check only |
+| Mike's question, 1120 image tokens | 9-11 s | freckles seen, to the hips | the afro a wig again, the plaid shirt under the shaggy jacket; track pants called *a long skirt* | named, with its straps and buckles |
+| an observant costume designer as its system prompt | 5-7 s | to the waist | more cautious: the open shirt and the corset gone | no |
+| **the instruction above, 1120 image tokens** | **2.3-2.8 s** | **reaches the hips** | track pants with side stripes, the open shirt, frayed jeans; the afro's jacket only *a lime green knitted cardigan* | **named, with the lace at the cuffs** |
+
+Asked directly (*Is there a garment worn over the black shirt, around the torso?*), Gemma described the corset, buckles and straps at 280 tokens too: it sees it, but leaves it out of a general description until the picture reaches it with more detail. ComfyUI's Generate Text tokenizes every image with 280 tokens (`max_soft_tokens`, about 0.65 MP; Renata's face reaches it 72 px wide) and does not expose the budget; Gemma 4's vision encoder takes up to 1120 (10 240 patch positions, 9 per token). Xólotl's *Let Gemma See More of the Picture* (`XolotlImageDetail`) hands the loaded Gemma on with that budget for every image it reads, and the describe workflows use it at 1120: the same instruction, the same 2-3 s, and the corset and the cuffs named.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.

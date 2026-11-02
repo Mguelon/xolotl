@@ -264,6 +264,8 @@ test("inside ComfyUI the workflow writes the same prompt: Gemma describes <Pictu
   assert.equal(template.describe.inputs.prompt, describe.gen.inputs.prompt, "the app's instruction");
   assert.equal(template.describe.inputs.sampling_mode, describe.gen.inputs.sampling_mode);
   assert.equal(template.describe_model.inputs.clip_name, describe.clip.inputs.clip_name, "the app's model");
+  assert.deepEqual(template.describe.inputs.clip, ["describe_detail", 0]);
+  assert.equal(template.describe_detail.inputs.image_tokens, describe.detail.inputs.image_tokens, "the app's image budget");
   const format = (a: string, b: string) => String(template.prompt.inputs.f_string).replace("{a}", a).replace("{b}", b).trim();
   const looks = "The character is a young woman with long wavy auburn hair.";
   assert.equal(format(looks, ""), swapPrompt({ description: looks, withFace: true }));

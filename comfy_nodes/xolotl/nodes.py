@@ -482,11 +482,39 @@ class XolotlNeutralFace:
         return (torch.cat([swap[index:index + 1], swap[:count]]), torch.cat([clip[index:index + 1], clip[:count]]), index)
 
 
+class XolotlImageDetail:
+    """Lets Gemma 4 see more of a picture. ComfyUI's Generate Text gives it 280 tokens per image, about 0.65 MP
+    (comfy/text_encoders/gemma4.py, max_soft_tokens), where Renata's face is 72 px wide; its vision encoder takes up to
+    1120 (position_embedding_size 10240 patches, 9 per token). The CLIP comes back the same, with that budget for every
+    image it reads; wire it into Generate Text in place of the loader's."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"clip": ("CLIP",),
+                             "image_tokens": ("INT", {"default": 560, "min": 70, "max": 1120, "step": 70})}}
+
+    RETURN_TYPES = ("CLIP",)
+    FUNCTION = "detail"
+    CATEGORY = "Xólotl"
+
+    def detail(self, clip, image_tokens):
+        sees = clip.clone()
+        tokenize = sees.tokenize
+
+        def with_budget(text, return_word_ids=False, **kwargs):
+            if kwargs.get("image") is not None:
+                kwargs.setdefault("max_soft_tokens", image_tokens)
+            return tokenize(text, return_word_ids, **kwargs)
+
+        sees.tokenize = with_budget
+        return (sees,)
+
+
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
                        "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize,
                        "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
                        "XolotlFaceCrop": XolotlFaceCrop, "XolotlMannequin": XolotlMannequin,
-                       "XolotlNeutralFace": XolotlNeutralFace}
+                       "XolotlNeutralFace": XolotlNeutralFace, "XolotlImageDetail": XolotlImageDetail}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
@@ -495,4 +523,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes",
                               "XolotlFaceCrop": "Xólotl · Character Face Close-up",
                               "XolotlMannequin": "Xólotl · Grey Mannequin for the Motion",
-                              "XolotlNeutralFace": "Xólotl · The Clip's Calmest Face First"}
+                              "XolotlNeutralFace": "Xólotl · The Clip's Calmest Face First",
+                              "XolotlImageDetail": "Xólotl · Let Gemma See More of the Picture"}

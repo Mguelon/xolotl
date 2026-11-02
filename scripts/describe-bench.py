@@ -9,7 +9,12 @@ Qwen3.5-0.8B and SmolVLM2-500M ran through a transformers loader node that left 
 5c658ec has it). The images are names in ComfyUI's input folder. The first image is timed cold (the model loads), the
 rest warm. Prints one line per image and appends the run to DESCRIBE_OUT
 (default _descargas/mediciones-h3-swap/medidas/descripciones/runs.jsonl). DESCRIBE_INSTRUCTION="..." tries other words
-for Gemma than the workflow's, to compare instructions on the same pictures before changing the workflow.
+for Gemma than the workflow's, to compare instructions on the same pictures before changing the workflow;
+DESCRIBE_THINKING=1 lets Gemma reason first (Generate Text's thinking mode) and DESCRIBE_MAX_LENGTH sets its token cap;
+DESCRIBE_CLIP=<file in models/text_encoders> runs the same workflow with another vision-language model that ComfyUI's
+loader knows (qwen3vl_4b_fp8_scaled.safetensors, say), DESCRIBE_CLIP_TYPE its loader type if it is not the default;
+DESCRIBE_WORKFLOW=<file> runs another describe graph (its LoadImage "img", its answer in Preview Any "out"; any other
+Preview Any is printed above it, a first step's list say).
 """
 import json, os, sys, time, urllib.request, uuid
 from pathlib import Path
@@ -25,9 +30,18 @@ def instruction():
 
 def graph(model, image):
     if model == "gemma4-e2b":
-        workflow = json.loads(DESCRIBE.read_text())
+        workflow = json.loads(Path(os.environ.get("DESCRIBE_WORKFLOW") or DESCRIBE).read_text())
         workflow["img"]["inputs"]["image"] = image
-        workflow["gen"]["inputs"]["prompt"] = instruction()
+        if os.environ.get("DESCRIBE_INSTRUCTION") or not os.environ.get("DESCRIBE_WORKFLOW"):
+            workflow["gen"]["inputs"]["prompt"] = instruction()
+        if os.environ.get("DESCRIBE_CLIP"):
+            workflow["clip"]["inputs"]["clip_name"] = os.environ["DESCRIBE_CLIP"]
+        if os.environ.get("DESCRIBE_CLIP_TYPE"):
+            workflow["clip"]["inputs"]["type"] = os.environ["DESCRIBE_CLIP_TYPE"]
+        if os.environ.get("DESCRIBE_THINKING"):
+            workflow["gen"]["inputs"]["thinking"] = True
+        if os.environ.get("DESCRIBE_MAX_LENGTH"):
+            workflow["gen"]["inputs"]["max_length"] = int(os.environ["DESCRIBE_MAX_LENGTH"])
         return workflow
     if model == "florence":
         return {"img": {"class_type": "LoadImage", "inputs": {"image": image}},
@@ -61,7 +75,12 @@ def run(model, image):
     if "execution_success" not in msgs:
         raise SystemExit(json.dumps(entry["status"])[:2000])
     seconds = (msgs["execution_success"]["timestamp"] - msgs["execution_start"]["timestamp"]) / 1000
-    texts = [t for o in entry["outputs"].values() for t in o.get("text", []) if isinstance(t, str)]
+    outputs = entry["outputs"]
+    steps = {n: " ".join(" ".join(t for t in o.get("text", []) if isinstance(t, str)).split()) for n, o in outputs.items() if n != "out"}
+    for n, t in steps.items():
+        if t:
+            print(f"  [{n}] {t}")
+    texts = [t for t in outputs.get("out", {}).get("text", []) if isinstance(t, str)] or [t for t in steps.values() if t]
     return seconds, wall, " ".join(" ".join(texts).split())
 
 
@@ -76,6 +95,8 @@ if __name__ == "__main__":
                "words": len(text.split()), "text": text, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
         if model == "gemma4-e2b":
             row["instruction"] = instruction()
+            row["thinking"] = bool(os.environ.get("DESCRIBE_THINKING"))
+            row["clip"] = os.environ.get("DESCRIBE_CLIP") or "gemma4_e2b_it_int8_convrot.safetensors"
         with OUT.open("a") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
         print(f"{model} {image}: ComfyUI {seconds:.2f} s, total {wall:.2f} s{' (con carga)' if i == 0 else ''}, {row['words']} palabras\n  {text}\n")
