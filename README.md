@@ -22,11 +22,11 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 
 | Through the app, 480p | Time | Result |
 |---|---|---|
-| 5.1 s part, default recipe | **5 min 16 s** | 1344×768, the clip's own size |
-| 10 s part, default recipe, two 124-frame windows | **11 min 15 s** | 928×512, the pack's canvas (run before the size-restoring nodes) |
+| 5.1 s part, default recipe, person framed | **5 min 34 s** | 1344×768, the clip's own size |
+| 10 s part, default recipe, person framed, two 124-frame windows | **10 min 47 s** | 1344×768, the clip's own size |
 | 5.1 s part, the reference graph's settings: fp8 H3, 8-step turbo LoRA | 11 min 46 s | 928×512, the pack's canvas |
 
-The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo LoRA, the int8 video VAE and Veda sparse attention at 79 %. Same clip, character and seed in every row; times are ComfyUI's own (`execution_start` → `execution_success`), and the 5.1 s take started from a freshly restarted ComfyUI, so it includes loading every model and tracking the person. The recipe was picked one change at a time, keeping the colours of the reference take: a faster community merge was dropped because it turned the jacket greener. ComfyUI's dynamic VRAM keeps the 16 GB card full in every run, and ComfyUI's container peaked at 46 GiB of RAM. Details, the runs behind the choice and how the time breaks down: [docs/measurements.md](docs/measurements.md).
+The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo LoRA, the int8 video VAE and Veda sparse attention at 79 %. Same clip, character and seed in every row; times are ComfyUI's own (`execution_start` → `execution_success`), and the 5.1 s take started from a freshly restarted ComfyUI, so it includes loading every model and tracking the person. The app's estimate before a take is a range built from these runs. The recipe was picked one change at a time, keeping the colours of the reference take: a faster community merge was dropped because it turned the jacket greener. ComfyUI's dynamic VRAM keeps the 16 GB card full in every run, and ComfyUI's container peaked at 46 GiB of RAM. Details, the runs behind the choice and how the time breaks down: [docs/measurements.md](docs/measurements.md).
 
 ## Requirements
 
@@ -42,7 +42,7 @@ The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo Lo
 git clone https://github.com/Mguelon/xolotl.git && cd xolotl
 npm ci
 
-# 1. The nodes: Xólotl's own two, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
+# 1. The nodes: Xólotl's own four, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
 scripts/install-nodes.sh /path/to/ComfyUI
 
 # 2. The models (~44 GB, open weights; read each model card's licence)
@@ -86,7 +86,7 @@ The prompt always starts with the workflow's own instruction — *Replace the se
 
 ## Which parts of ComfyUI
 
-Core ComfyUI nodes (MiniMax H3, SAM 3.1, video), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, three nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
+Core ComfyUI nodes (MiniMax H3, SAM 3.1, video), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, four nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
 
 ## The stack is fully open
 
@@ -97,7 +97,7 @@ Core ComfyUI nodes (MiniMax H3, SAM 3.1, video), Akatz Labs' `h3_character_swap`
 | Ref2V turbo 4-step LoRA v0.1 ([lightx2v/Minimax-h3-Turbo](https://huggingface.co/lightx2v/Minimax-h3-Turbo), packaged in Comfy-Org/MiniMax-H3) | see model card |
 | Veda R2VA sparse-attention predictor ([Veda-Sparse/Minimax-H3-R2VA-Veda-Preview](https://huggingface.co/Veda-Sparse/Minimax-H3-R2VA-Veda-Preview)) | MiniMax H3 Community License |
 | Veda node ([veda-sparse/Veda-on-ComfyUI](https://github.com/veda-sparse/Veda-on-ComfyUI), installed by script) | MIT |
-| Xólotl's three nodes (`comfy_nodes/xolotl`) | MIT |
+| Xólotl's four nodes (`comfy_nodes/xolotl`) | MIT |
 | SAM 3.1 ([Comfy-Org/sam3.1](https://huggingface.co/Comfy-Org/sam3.1)) | see model card |
 | `h3_character_swap` node pack ([akatz-labs/h3-character-swap-tool](https://github.com/akatz-labs/h3-character-swap-tool), installed by script, not vendored) | GPL-3.0 |
 | The character-swap workflow (same repository) | MIT |
@@ -108,7 +108,7 @@ No partner nodes, no closed API in the path. The first-frame "anchor" that Comfy
 
 ## Limits
 
-One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect about 5 min per 5 s and 11 min per 10 s at 480p on a 16 GB card (see the measurements); 768p is not measured with the default recipe yet (the earlier fp8 recipe took 30 min for 5 s). In a band about 64 px wide around the person the background is regenerated at the model's resolution, so it can be a little softer than the rest of the frame.
+One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect about 5½ min per 5 s and 11 min per 10 s at 480p on a 16 GB card (see the measurements); 768p is not measured with the default recipe yet (the earlier fp8 recipe took 30 min for 5 s). In a band about 64 px wide around the person the background is regenerated at the model's resolution, so it can be a little softer than the rest of the frame.
 
 ## Credits
 

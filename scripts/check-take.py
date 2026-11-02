@@ -12,6 +12,9 @@ Reports, in <out>/check-take.json:
   sharpness  mean luma gradient of that background in the result over the clip's (1.0 = as sharp as the clip)
   jacket     mean Cb/Cr in the region the recipe bake-off measured (180x80 at 150,240 of the 928x512 canvas,
              frames 20-100), with the result brought to that canvas the way the pack crops, and on the canvas take
+  detail     fine detail on the person: mean absolute 4-neighbour Laplacian of luma where the result moved (the
+             person and the band around them), in the clip, in the result and, with --canvas-take, in the canvas take
+             brought back to the clip's size (lanczos) where its canvas covers the clip
 """
 import argparse
 import json
@@ -67,6 +70,29 @@ def gradient(y, region):
     return float(g[:, region[:-1, :-1]].mean())
 
 
+def laplacian(y, region):
+    """Mean absolute 4-neighbour Laplacian of luma inside region, 16 frames at a time: the fine detail there."""
+    inner = region[1:-1, 1:-1]
+    total = 0.0
+    for i in range(0, len(y), 16):
+        v = y[i:i + 16].astype(np.float32)
+        lap = np.abs(4 * v[:, 1:-1, 1:-1] - v[:, :-2, 1:-1] - v[:, 2:, 1:-1] - v[:, 1:-1, :-2] - v[:, 1:-1, 2:])
+        total += float(lap[:, inner].sum())
+    return round(total / (len(y) * int(inner.sum())), 2)
+
+
+def uncanvas(width, height):
+    """The filter that brings a 928x512 canvas take back to the clip's size, and the part of the clip it covers."""
+    scale = max(928 / width, 512 / height)  # CANVAS covers the canvas, then centre-crops
+    left = (math.ceil(width * scale - 1e-6) - 928) // 2 / scale
+    top = (math.ceil(height * scale - 1e-6) - 512) // 2 / scale
+    even = lambda v: int(round(v / 2)) * 2
+    w, h, x, y = even(928 / scale), even(512 / scale), even(left), even(top)
+    covered = np.zeros((height, width), bool)
+    covered[y + 4:min(height, y + h) - 4, x + 4:min(width, x + w) - 4] = True  # lanczos rings at the edges
+    return f"scale={w}:{h}:flags=lanczos,pad={max(width, x + w)}:{max(height, y + h)}:{x}:{y},crop={width}:{height}:0:0", covered
+
+
 def jacket(path, canvas_filter):
     out = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(path), "-vf",
                           (canvas_filter + "," if canvas_filter else "") + JACKET, "-f", "null", "-"],
@@ -100,9 +126,15 @@ def main():
                                for plane, a, b in zip("YUV", clip, take)}}
     report["sharpness"] = round(gradient(take[0], background) / gradient(clip[0], background), 3)
     report["jacket"] = {"result": jacket(args.result, CANVAS)}
+    report["detail"] = {"region_share": round(float(moved.mean()), 3)}
     if args.canvas_take:
         report["canvas_take"] = probe(args.canvas_take)
         report["jacket"]["canvas_take"] = jacket(args.canvas_take, "")
+        back, covered = uncanvas(width, height)
+        moved &= covered
+        report["detail"]["canvas_take"] = laplacian(planes(["-i", args.canvas_take, "-vf", back], width, height,
+                                                           count)[0], moved)
+    report["detail"].update(clip=laplacian(clip[0], moved), result=laplacian(take[0], moved))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "check-take.json").write_text(json.dumps(report, indent=1))
