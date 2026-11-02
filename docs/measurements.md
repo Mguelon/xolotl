@@ -156,6 +156,17 @@ The anchor holds her face until she turns (frame ~84) and then loses it to the p
 
 `XolotlFaceCrop` finds the largest face with YuNet (OpenCV Zoo, MIT, 227 KB, bundled in `comfy_nodes/xolotl/models/`) and cuts a square 2.5 face heights wide with the face's centre at 37 % from the top, the framing of the drawn close-up; a picture smaller than that is enlarged with Lanczos. On *Inés*'s simple sheet it picks the big face. A picture where it finds no face goes to H3 whole, so a take never stops for it.
 
+The same test with *Inés*, whose reference is atelier's simple sheet, so a big face is already in `<Picture 1>` (the node picks that face for the close-up):
+
+| Take (4.8 s) | What else H3 gets | Like the character | Like the clip | Frames closer to the clip | Mouth | ComfyUI |
+|---|---|---|---|---|---|---|
+| `ines48-base` | nothing | 0.33 | 0.11 | 0 % | +0.27 | 5 min 26 s |
+| `ines48-cara` | her face cut from the sheet (`XolotlFaceCrop` in the graph) | **0.39** | **0.09** | 0 % | **+0.57** | 5 min 29 s |
+
+With the face already big in the sheet the identity was there, and the close-up still adds to it; the mouth follows the clip twice as closely (correlation +0.57 against +0.27).
+
+**The Rigless LoRA** ([StephenShumway/rigless-lora](https://huggingface.co/StephenShumway/rigless-lora), a fine-tune of Akatz's v1.5 on real footage, MiniMax H3 Community License) in place of v1.5, everything else as `renata48-recorte`: like the character **0.36**, like the clip **0.39**, closer to the clip in 60 % of the frames, mouth +0.64, 5 min 11 s. Her face narrows and takes the performer's lips; with v1.5 it keeps her freckles, brows and round face. Its authors find it no better at face identity and better at keeping a dancer's back to the camera; Rigless runs it beside an 8-step turbo LoRA, and Xólotl runs the 4-step one. Xólotl keeps v1.5.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.
