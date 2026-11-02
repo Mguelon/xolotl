@@ -1,10 +1,12 @@
-"""Xólotl's two video nodes around the Akatz H3 character-swap pack.
+"""Xólotl's nodes around the Akatz H3 character-swap pack.
 
 XolotlFitVideo puts the whole clip, or a crop of it, on the model's canvas (contain and pad, never cut), so H3
 Prepare Video keeps it as it is. XolotlPersonBox turns the masks of a first pass over the whole frame into that crop:
-the person with some room, so the canvas's pixels go to them instead of the scenery. XolotlRestoreSize lays the swap
-back over the clip's own frames, at the clip's own size and place, through the region the swap regenerated:
-everything outside it stays the original footage until the final encode.
+the person with some room, so the canvas's pixels go to them instead of the scenery. XolotlMapMasks carries the first
+pass's masks onto the crop's canvas, so the person is tracked once. XolotlRestoreSize lays the swap back over the
+clip's own frames, at the clip's own size and place, through the region the swap regenerated: everything outside it
+stays the original footage until the final encode. XolotlGrowMasks grows the person's mask as the pack's Expand
+Person Mask does, in a fraction of the time, and XolotlReuseEncodes keeps the pack from encoding the same frames twice.
 
 Both nodes cut and decode the original file with the same ffmpeg options, so they see the same frames, and neither
 goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in the pack, so a long
@@ -20,11 +22,14 @@ from fractions import Fraction
 from pathlib import Path
 
 import folder_paths
+import numpy as np
 import torch
 import torch.nn.functional as F
 from comfy_api.latest._input_impl.video_types import VideoFromFile
 
 from .geometry import PIXEL_BUDGETS, fit_canvas, person_box
+from .masks import grow as grow_masks
+from .reuse import reusing_encodes
 
 FPS = 24  # the pack generates at 24 fps (video.py FPS)
 TIMELINE = f"setpts=PTS-STARTPTS,fps=fps={FPS}:round=near:eof_action=round"  # the pack's own resampling
@@ -311,9 +316,72 @@ class XolotlPersonBox:
         return (crop, summary)
 
 
+class XolotlGrowMasks:
+    """The pack's Expand Person Mask without its cost: the same masks (every pixel within the radius of the person,
+    Euclidean, at the prepared video's resolution), grown with OpenCV over a few threads, and without the colour
+    overlay of the whole clip that the pack also returns and nothing reads. 243 frames at 896x512: 1.3 s instead of
+    10.3 s; at 1024x768, 2.4 s instead of 22.4 s (scripts/time-prep.py). Same inputs, so it takes the pack's place.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"masks": ("MASK",), "images": ("IMAGE",),
+                             "source_frames": ("INT", {"default": 120, "min": 1}),
+                             "expansion_px": ("INT", {"default": 64, "min": 0, "max": 256})}}
+
+    RETURN_TYPES = ("MASK",)
+    RETURN_NAMES = ("generation_mask",)
+    FUNCTION = "grow"
+    CATEGORY = "Xólotl"
+
+    def grow(self, masks, images, source_frames, expansion_px):
+        # the pack's own checks, with its messages (h3_character_swap/nodes.py, ExpandMask.expand)
+        if not 1 <= source_frames <= len(images) or len(masks) < source_frames:
+            raise ValueError("Masks must cover the complete source timeline.")
+        if masks.shape[1:] != images.shape[1:3]:
+            raise ValueError("Masks and prepared video dimensions differ.")
+        raw = masks[:source_frames].detach().cpu().numpy()
+        if not np.isfinite(raw).all():
+            raise ValueError("Mask contains non-finite values.")
+        binary = raw > 0.5
+        missing = np.flatnonzero(~binary.any(axis=(1, 2))).tolist()
+        if missing:
+            raise ValueError(f"SAM lost the selected person at frames {missing[:20]}. Correct the selection or split "
+                             "the source shot before generating.")
+        grown = torch.from_numpy(grow_masks(binary, expansion_px).astype(np.float32))
+        if len(images) > source_frames:
+            grown = torch.cat([grown, grown[-1:].expand(len(images) - source_frames, -1, -1)])
+        return (grown,)
+
+
+class XolotlReuseEncodes:
+    """The same VAE, except that encoding the pixels it has just encoded gives back that latent instead of a repeat.
+
+    The pack encodes a window's source frames twice: as the reference video H3 follows, then as the latent kept
+    outside the person. In the first window they are the same frames at the same size (the pack's resize to that
+    size is an exact copy), so the second encode is a repeat: 26 s of a 5 s take at 480p on a 16 GB card. The match
+    is exact and H3's video VAE returns the posterior mean, so the latent is the one the repeat would give.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"vae": ("VAE",)}}
+
+    RETURN_TYPES = ("VAE",)
+    FUNCTION = "wrap"
+    CATEGORY = "Xólotl"
+    DESCRIPTION = "Skips an encode of the very pixels the VAE has just encoded (the pack's first window does one)."
+
+    def wrap(self, vae):
+        return (reusing_encodes(vae),)
+
+
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
-                       "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize}
+                       "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize,
+                       "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
-                              "XolotlRestoreSize": "Xólotl · Restore Clip Size"}
+                              "XolotlRestoreSize": "Xólotl · Restore Clip Size",
+                              "XolotlGrowMasks": "Xólotl · Grow the Person's Mask",
+                              "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes"}

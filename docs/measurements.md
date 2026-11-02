@@ -82,6 +82,25 @@ A 10 s part of the same terrace (fde01df1, same character and seed, two windows)
 
 Through the app (`scripts/check-take.py`, the 5.1 s take above, before *Frame the Person*): 1344×768 and 122 frames, the same count as F. On the 44.7 % of the frame the swap left alone, the result matches the clip at 49.68 / 53.65 / 53.62 dB with biases under 0.03 levels, and that background's gradient is 1.03 times the clip's: as sharp as the original. The jacket reads 121.83 / 132.15 against 121.78 / 132.07 for F.
 
+## Two nodes that save time
+
+Between the person's tracking and the first window the pack grows the person's mask by 64 px with scipy's exact distance transform, frame by frame, and also builds a colour overlay of the whole clip that nothing reads. `scripts/time-prep.py` times it in the container on 243 frames: 10.3 s at 896×512 and 22.4 s at 1024×768. Xólotl's *Grow the Person's Mask* gives the same masks (checked against scipy pixel for pixel, `comfy_nodes/xolotl/test_masks.py`) with OpenCV's exact distance transform over 8 threads, without the overlay: 1.3 s and 2.4 s. On the GPU the 5.1 s take (6dbe3ceb) came out **byte-identical** to the 5 min 34 s take (d431fad3), all 122 frames: the pipeline repeats bit for bit with the same seed, and the growth saved 4.5 s before the first window (18.0 s to 13.5 s).
+
+The pack also VAE-encodes the first window's frames twice: as H3's reference video, then for the latent kept outside the person. ComfyUI decodes a yuv420p clip to float RGB (`gbrpf32le`), and its lanczos resize, called for the reference even at the same size, hands the frames back rounded down to 8 bits, so the two encodes get frames up to 1/255 apart. Xólotl's *Reuse VAE Encodes* gives the second encode the first one's latent when its frames are exactly the first ones rounded down that way (`eight_bit` matches ComfyUI's resize bit for bit). The same take (3c3b914c): **5 min 08 s** (307.7 s, 26.7 s less than 334.4 s); the second encode took 2.4 s instead of 21.6 s. The person's context now comes from frames at most 1/255 darker, so the take is no longer byte-identical: 4.65 % of the pixels differ by more than 8 levels, all on the edges of the braids and features (a sheet of frame 100 with the difference ×8 is in the measurement folder); fine detail 5.81 against 5.87, jacket 121.60 / 132.74 against 121.51 / 132.83, background 49.63 dB against 49.64. To the eye the two takes are the same.
+
+## 768p with the default recipe
+
+The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.
+
+| 768p, 5.1 s | ComfyUI | Per step | Fine detail on the person | Jacket Cb / Cr |
+|---|---|---|---|---|
+| ref2v 4-step v0.1, shift 12 (default) | **9 min 09 s** (549.2 s) | 87.1 s | **6.36** | 121.83 / 132.32 |
+| ref2v 4-step v1.0 768p, shift 12 | 8 min 13 s, first pass cached | 86.8 s | 6.19 | 123.11 / 127.69 |
+| ref2v 4-step v1.0 768p, shift 6 | 8 min 10 s, first pass cached | 86.5 s | 6.22 | 122.95 / 125.68 |
+| 480p framed, for reference | 5 min 34 s | 47.4 s | 5.87 | 121.51 / 132.83 |
+
+Detail on the region any of the four moved (`scripts/check-take.py --peer`); the clip has 6.15 there. The v1.0 LoRA samples at the same speed (the two shorter times are ComfyUI reusing the first pass it had cached), has less detail at both shifts and turns the olive jacket of the character a deeper green: v0.1 stays the default at 768p. At 768p the person comes out at native resolution, 1.08× the 480p take's detail, for 1.64× the time; the earlier fp8 recipe took 30 min 21 s for the same take. ComfyUI's container peaked at 49.6 GiB of RAM.
+
 ## The earlier recipe: fp8, 8 steps
 
 The same 5.17 s clip (124 frames), the same character, seed 904239 in runs 1 and 2, `er_sde`, 480p on the pack's 928×512 canvas. VRAM and RAM sampled every 5 s with `nvidia-smi` and `free`.

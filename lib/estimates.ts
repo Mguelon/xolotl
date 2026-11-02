@@ -18,10 +18,12 @@ type Timing = {
  * 18 frames of history it carries. null = not measured yet, so the interface says nothing.
  */
 export const TIMING: Record<SwapSize, Timing | null> = {
-  // d431fad3, 5.1 s framed, tight crop (10 645 tokens regenerated): 334.4 s, 47.44 s per step.
-  // fde01df1, 10 s framed, loose crop (7 920 / 8 006): 647.2 s, windows at 39.6 and 47.1 s per step, 109 s between
-  // the two samplings. ed24325b, 10 s on the pack's canvas: 42.8 and 50.8, the same 1.19 for the history.
-  "480p": { trackingPerSecond: 9.5, firstFixed: 96, laterFixed: 109, perStep: [39.6, 47.4], history: 1.19 },
+  // 3c3b914c, 5.1 s framed, tight crop (10 645 tokens regenerated), with Xólotl's mask growth and encode reuse:
+  // 307.7 s, 47.4 s per step (334.4 s before them, d431fad3). fde01df1, 10 s framed, loose crop (7 920 / 8 006),
+  // before them: windows at 39.6 and 47.1 s per step, 109 s between the two samplings; ed24325b, 10 s on the pack's
+  // canvas: 42.8 and 50.8, the same 1.19 for the history. The growth saves 0.9 s per second of clip
+  // (scripts/time-prep.py), the reuse only touches the first window.
+  "480p": { trackingPerSecond: 8.6, firstFixed: 74, laterFixed: 109, perStep: [39.6, 47.4], history: 1.19 },
   "768p": null,
 };
 

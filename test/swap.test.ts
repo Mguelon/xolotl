@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { fitToInstalled, PREFERRED, readSettings, swapPrompt, swapWorkflow, type Graph, type Installed } from "../lib/swap.ts";
+import { XOLOTL_NODES, fitToInstalled, PREFERRED, readSettings, swapPrompt, swapWorkflow, type Graph, type Installed } from "../lib/swap.ts";
 import { estimateMinutes, windowCount } from "../lib/estimates.ts";
 
 const template = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8")) as Graph;
@@ -58,7 +58,7 @@ test("runs recipe F: int8 H3, the ref2v 4-step LoRA, the int8 VAE and Veda befor
 test("fits the recipe to what ComfyUI has installed", () => {
   const all: Installed = {
     diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae],
-    vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true, xolotlNodes: true,
+    vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true, xolotl: [...XOLOTL_NODES],
   };
   const fit = (installed: Installed, graph = template) => fitToInstalled(structuredClone(graph), installed);
   assert.deepEqual(fit(all), template, "everything installed: the template as it is");
@@ -73,7 +73,16 @@ test("fits the recipe to what ComfyUI has installed", () => {
   pinned["1"].inputs.unet_name = PREFERRED.unet[1];
   assert.equal(fit(all, pinned)["1"].inputs.unet_name, PREFERRED.unet[1], "an installed override is kept");
   assert.equal(fit({ ...all, diffusionModels: [], vaes: [] })["1"].inputs.unet_name, PREFERRED.unet[0], "nothing known: no change");
-  const bare = fit({ ...all, xolotlNodes: false });
+  const without = (name: string) => ({ ...all, xolotl: all.xolotl.filter((n) => n !== name) });
+  const noReuse = fit(without("XolotlReuseEncodes"));
+  assert.equal(noReuse.reuse, undefined);
+  assert.deepEqual(noReuse["800"].inputs.video_vae, ["7", 0], "without it the pack reads the VAE itself");
+  const noGrow = fit(without("XolotlGrowMasks"));
+  assert.equal(noGrow["110"].class_type, "H3CharacterSwapExpandMask", "the pack grows the mask itself, same inputs");
+  assert.deepEqual(noGrow["110"].inputs, template["110"].inputs);
+  assert.equal(noGrow.restore.class_type, "XolotlRestoreSize", "the rest of Xólotl's path stays");
+  assert.equal(fit(without("XolotlMapMasks")).restore, undefined, "a missing core node: the pack's own path");
+  const bare = fit({ ...all, xolotl: [] });
   assert.equal(bare.fit, undefined);
   assert.equal(bare.restore, undefined);
   assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
@@ -108,6 +117,11 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.deepEqual(graph.map.inputs, { masks: ["107a", 0], first: ["fit0", 1], fit: ["fit", 1] });
     assert.deepEqual(graph["110"].inputs.masks, ["map", 0]);
     assert.deepEqual(graph["107a"].inputs.masks, ["106a", 0]);
+    assert.equal(graph["110"].class_type, "XolotlGrowMasks", "the pack's mask growth, without its cost");
+    // The pack's only video VAE goes through the node that skips the first window's repeated encode.
+    assert.equal(graph.reuse.class_type, "XolotlReuseEncodes");
+    assert.deepEqual(graph.reuse.inputs, { vae: ["7", 0] });
+    assert.deepEqual(graph["800"].inputs.video_vae, ["reuse", 0]);
   }
 });
 
@@ -174,9 +188,9 @@ test("counts windows as the pack plans them", () => {
 
 test("estimates minutes from the measured tracking, window and step times", () => {
   assert.deepEqual(estimateMinutes("480p", 5), [4, 6]);
-  assert.deepEqual(estimateMinutes("480p", 5.1), [4, 6], "measured 5:16 loose, 5:34 tight");
-  assert.deepEqual(estimateMinutes("480p", 10), [10, 13], "measured 10:47 loose");
-  assert.deepEqual(estimateMinutes("480p", 15), [15, 20]);
-  assert.deepEqual(estimateMinutes("480p", 5, 20), [14, 20]);
+  assert.deepEqual(estimateMinutes("480p", 5.1), [4, 6], "measured 5:08 tight");
+  assert.deepEqual(estimateMinutes("480p", 10), [9, 12], "10:47 before the two nodes that save time");
+  assert.deepEqual(estimateMinutes("480p", 15), [15, 19]);
+  assert.deepEqual(estimateMinutes("480p", 5, 20), [14, 19]);
   assert.equal(estimateMinutes("768p", 5), null, "not measured with this recipe yet");
 });

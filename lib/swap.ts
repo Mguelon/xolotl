@@ -58,8 +58,13 @@ export type Installed = {
   vaes: string[];
   vedaPredictors: string[];
   vedaNode: boolean;
-  xolotlNodes: boolean;
+  /** The Xólotl nodes ComfyUI loaded (XOLOTL_NODES), by class name. */
+  xolotl: string[];
 };
+
+/** Xólotl's nodes. The first four give the result back at the clip's size; the other two only save time. */
+export const XOLOTL_NODES = ["XolotlFitVideo", "XolotlPersonBox", "XolotlMapMasks", "XolotlRestoreSize",
+  "XolotlGrowMasks", "XolotlReuseEncodes"] as const;
 
 /** Fastest first. The int8 files need ComfyUI on CUDA 13 (comfy-kitchen kernels); fp8 / fp16 run everywhere. */
 export const PREFERRED = {
@@ -85,7 +90,12 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   if (graph.veda && !(installed.vedaNode && installed.vedaPredictors.includes(String(graph.veda.inputs.predictor)))) {
     bypass(graph, "veda");
   }
-  if (graph.restore && !installed.xolotlNodes) {
+  const has = (name: string) => installed.xolotl.includes(name);
+  if (graph.reuse && !has("XolotlReuseEncodes")) bypass(graph, "reuse", graph.reuse.inputs.vae);
+  if (graph["110"]?.class_type === "XolotlGrowMasks" && !has("XolotlGrowMasks")) {
+    graph["110"].class_type = "H3CharacterSwapExpandMask"; // the pack's own, same inputs, slower
+  }
+  if (graph.restore && !XOLOTL_NODES.slice(0, 4).every(has)) {
     bypass(graph, "restore", ["808", 0]);
     bypass(graph, "fit", graph.fit.inputs.video);
     graph["110"].inputs.masks = ["107", 0]; // the pack tracks the person on its own canvas

@@ -22,11 +22,12 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 
 | Through the app, 480p | Time | Result |
 |---|---|---|
-| 5.1 s part, default recipe, person framed | **5 min 34 s** | 1344×768, the clip's own size |
-| 10 s part, default recipe, person framed, two 124-frame windows | **10 min 47 s** | 1344×768, the clip's own size |
+| 5.1 s part, default recipe, person framed | **5 min 08 s** | 1344×768, the clip's own size |
+| 10 s part, default recipe, person framed, two 124-frame windows | **10 min 47 s**, before the two nodes that save time | 1344×768, the clip's own size |
+| 5.1 s part at 768p, the person at native resolution | **9 min 09 s**, before the two nodes that save time | 1344×768, the clip's own size |
 | 5.1 s part, the reference graph's settings: fp8 H3, 8-step turbo LoRA | 11 min 46 s | 928×512, the pack's canvas |
 
-The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo LoRA, the int8 video VAE and Veda sparse attention at 79 %. Same clip, character and seed in every row; times are ComfyUI's own (`execution_start` → `execution_success`), and the 5.1 s take started from a freshly restarted ComfyUI, so it includes loading every model and tracking the person. The app's estimate before a take is a range built from these runs. The recipe was picked one change at a time, keeping the colours of the reference take: a faster community merge was dropped because it turned the jacket greener. ComfyUI's dynamic VRAM keeps the 16 GB card full in every run, and ComfyUI's container peaked at 46 GiB of RAM. Details, the runs behind the choice and how the time breaks down: [docs/measurements.md](docs/measurements.md).
+The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo LoRA, the int8 video VAE and Veda sparse attention at 79 %. Same clip, character and seed in every row; times are ComfyUI's own (`execution_start` → `execution_success`), and the 5.1 s take started from a freshly restarted ComfyUI, so it includes loading every model and tracking the person. The app's estimate before a take is a range built from these runs. The recipe was picked one change at a time, keeping the colours of the reference take: a faster community merge was dropped because it turned the jacket greener. ComfyUI's dynamic VRAM keeps the 16 GB card full in every run, and ComfyUI's container peaked at 48 GiB of RAM at 480p and 50 GiB at 768p (sampled every 10 s). Details, the runs behind the choice and how the time breaks down: [docs/measurements.md](docs/measurements.md).
 
 ## Requirements
 
@@ -42,7 +43,7 @@ The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo Lo
 git clone https://github.com/Mguelon/xolotl.git && cd xolotl
 npm ci
 
-# 1. The nodes: Xólotl's own four, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
+# 1. The nodes: Xólotl's own six, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
 scripts/install-nodes.sh /path/to/ComfyUI
 
 # 2. The models (~44 GB, open weights; read each model card's licence)
@@ -79,14 +80,14 @@ browser ── Next.js route handlers ── @comfyorg/sdk ── comfy-api-prox
 
 1. The browser uploads the clip and the character to the app (`POST /api/jobs`), together with the part to use (start, length), the quality (480p / 768p), a seed and an optional direction. The same endpoint also takes `steps` (1–100, default 4) and `turbo=off`, which drops the 4-step turbo LoRA and samples H3's full schedule as the official template does; the interface does not expose them yet.
 2. `lib/swap.ts` fills the workflow template: the clip into `LoadVideo`, the character into `LoadImage`, the part into the `Video Slice` and `PrepareVideo` nodes, the prompt and seed into the swap settings. The SDK uploads the files as assets and submits the graph to the proxy, which runs it on ComfyUI.
-3. In the graph, Xólotl's *Fit Clip on Canvas* puts the whole part on the model's canvas: the 32-pixel grid within the 480p (0.5 MP) or 768p (1 MP) budget, the clip's aspect ratio kept and the few leftover pixels mirrored, so nothing is cut. SAM 3.1 finds the person in the first frame and tracks them through the clip. Xólotl's *Frame the Person* turns those masks into a crop around the person, with 20 % of room and a phone-like aspect ratio, and a second *Fit Clip on Canvas* puts that crop on the canvas: the pixels go to the person, up to their native resolution. The first pass's masks are carried onto that canvas (the person is tracked once); the mask is expanded by 64 px; MiniMax H3 `ref2va` regenerates only the masked tokens with the character image as reference, the character-swap LoRA v1.5, the 4-step ref2v turbo LoRA and Veda sparse attention, in 124-frame windows (a 10 s part is two windows that share 18 frames). Xólotl's *Restore Clip Size* then scales the swap back to the crop's size and lays it over the clip's own frames at the crop's place, through the same mask, with the source audio: the result has your clip's size and aspect ratio, and everything outside the person is your original footage.
+3. In the graph, Xólotl's *Fit Clip on Canvas* puts the whole part on the model's canvas: the 32-pixel grid within the 480p (0.5 MP) or 768p (1 MP) budget, the clip's aspect ratio kept and the few leftover pixels mirrored, so nothing is cut. SAM 3.1 finds the person in the first frame and tracks them through the clip. Xólotl's *Frame the Person* turns those masks into a crop around the person, with 20 % of room and a phone-like aspect ratio, and a second *Fit Clip on Canvas* puts that crop on the canvas: the pixels go to the person, up to their native resolution. The first pass's masks are carried onto that canvas (the person is tracked once), and Xólotl's *Grow the Person's Mask* expands them by 64 px, the same masks as the pack's own node in an eighth of the time. MiniMax H3 `ref2va` regenerates only the masked tokens with the character image as reference, the character-swap LoRA v1.5, the 4-step ref2v turbo LoRA and Veda sparse attention, in 124-frame windows (a 10 s part is two windows that share 18 frames); Xólotl's *Reuse VAE Encodes* spares the first window a second encode of the very frames it has just encoded. Xólotl's *Restore Clip Size* then scales the swap back to the crop's size and lays it over the clip's own frames at the crop's place, through the same mask, with the source audio: the result has your clip's size and aspect ratio, and everything outside the person is your original footage.
 4. The app polls the job (`GET /api/jobs/:id`), shows the queue position, elapsed time and GPU load, and when the job succeeds stores the result next to the clip, the character and the workflow in `data/takes/<job id>/`.
 
 The prompt always starts with the workflow's own instruction — *Replace the selected person in `<Video 1>` with the character in `<Picture 1>`. Preserve the source performance, scene and audio timing.* — and your direction is appended. Describing the character's face, hair, skin, build and outfit works much better than a generic "replace the person" (the authors of the workflow say the same, and our takes agree).
 
 ## Which parts of ComfyUI
 
-Core ComfyUI nodes (MiniMax H3, SAM 3.1, video), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, four nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
+Core ComfyUI nodes (MiniMax H3, SAM 3.1, video), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, six nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
 
 ## The stack is fully open
 
@@ -97,7 +98,7 @@ Core ComfyUI nodes (MiniMax H3, SAM 3.1, video), Akatz Labs' `h3_character_swap`
 | Ref2V turbo 4-step LoRA v0.1 ([lightx2v/Minimax-h3-Turbo](https://huggingface.co/lightx2v/Minimax-h3-Turbo), packaged in Comfy-Org/MiniMax-H3) | see model card |
 | Veda R2VA sparse-attention predictor ([Veda-Sparse/Minimax-H3-R2VA-Veda-Preview](https://huggingface.co/Veda-Sparse/Minimax-H3-R2VA-Veda-Preview)) | MiniMax H3 Community License |
 | Veda node ([veda-sparse/Veda-on-ComfyUI](https://github.com/veda-sparse/Veda-on-ComfyUI), installed by script) | MIT |
-| Xólotl's four nodes (`comfy_nodes/xolotl`) | MIT |
+| Xólotl's six nodes (`comfy_nodes/xolotl`) | MIT |
 | SAM 3.1 ([Comfy-Org/sam3.1](https://huggingface.co/Comfy-Org/sam3.1)) | see model card |
 | `h3_character_swap` node pack ([akatz-labs/h3-character-swap-tool](https://github.com/akatz-labs/h3-character-swap-tool), installed by script, not vendored) | GPL-3.0 |
 | The character-swap workflow (same repository) | MIT |
@@ -108,7 +109,7 @@ No partner nodes, no closed API in the path. The first-frame "anchor" that Comfy
 
 ## Limits
 
-One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect about 5½ min per 5 s and 11 min per 10 s at 480p on a 16 GB card (see the measurements); 768p is not measured with the default recipe yet (the earlier fp8 recipe took 30 min for 5 s). In a band about 64 px wide around the person the background is regenerated at the model's resolution, so it can be a little softer than the rest of the frame.
+One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect about 5 min per 5 s and 10 to 11 min per 10 s at 480p on a 16 GB card, and about 9 min per 5 s at 768p (see the measurements). In a band about 64 px wide around the person the background is regenerated at the model's resolution, so it can be a little softer than the rest of the frame.
 
 ## Credits
 

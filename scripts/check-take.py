@@ -2,7 +2,7 @@
 character and seed that went the pack's own way (cropped to its canvas and returned at that size).
 
   python3 -I scripts/check-take.py --result take.mp4 --clip clip.mp4 --start 0 --seconds 5.1 \
-      [--canvas-take earlier.mp4] --out <dir>
+      [--canvas-take earlier.mp4] [--peer other-take.mp4 ...] --out <dir>
 
 Reports, in <out>/check-take.json:
   output     size, frames, seconds and sound of the result; frames of the clip's cut, made as the nodes make it
@@ -14,7 +14,8 @@ Reports, in <out>/check-take.json:
              frames 20-100), with the result brought to that canvas the way the pack crops, and on the canvas take
   detail     fine detail on the person: mean absolute 4-neighbour Laplacian of luma where the result moved (the
              person and the band around them), in the clip, in the result and, with --canvas-take, in the canvas take
-             brought back to the clip's size (lanczos) where its canvas covers the clip
+             brought back to the clip's size (lanczos) where its canvas covers the clip; with --peer (other takes of
+             the same part at the clip's size, e.g. at another quality), on the region any of them moved, for each
 """
 import argparse
 import json
@@ -109,6 +110,7 @@ def main():
     parser.add_argument("--start", type=float, default=0.0)
     parser.add_argument("--seconds", type=float, required=True)
     parser.add_argument("--canvas-take")
+    parser.add_argument("--peer", action="append", default=[])
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
     cut = (["-ss", f"{args.start:.6f}"] if args.start else []) + ["-t", f"{args.seconds:.6f}", "-i", args.clip]
@@ -126,6 +128,9 @@ def main():
                                for plane, a, b in zip("YUV", clip, take)}}
     report["sharpness"] = round(gradient(take[0], background) / gradient(clip[0], background), 3)
     report["jacket"] = {"result": jacket(args.result, CANVAS)}
+    peers = {path: planes(["-i", path], width, height, count)[0] for path in args.peer}
+    for y in peers.values():
+        moved |= (np.abs(y.astype(np.int16) - clip[0][:len(y)].astype(np.int16)) > 20).any(axis=0)
     report["detail"] = {"region_share": round(float(moved.mean()), 3)}
     if args.canvas_take:
         report["canvas_take"] = probe(args.canvas_take)
@@ -135,6 +140,8 @@ def main():
         report["detail"]["canvas_take"] = laplacian(planes(["-i", args.canvas_take, "-vf", back], width, height,
                                                            count)[0], moved)
     report["detail"].update(clip=laplacian(clip[0], moved), result=laplacian(take[0], moved))
+    if peers:
+        report["detail"]["peers"] = {Path(path).name: laplacian(y, moved) for path, y in peers.items()}
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "check-take.json").write_text(json.dumps(report, indent=1))

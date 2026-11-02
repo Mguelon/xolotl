@@ -35,11 +35,13 @@ const prompt = JSON.parse(readFileSync(join(TAKES, dir, "workflow.json"), "utf8"
 
 const edits = {};
 for (const s of sets) {
-  const m = /^(\d+)\.([^=]+)=(.*)$/.exec(s);
+  const m = /^(\w+)\.([^=]+)=(.*)$/.exec(s);
   if (!m) { console.error(`bad --set ${s}`); process.exit(2); }
   const [, node, field, raw] = m;
   if (!prompt[node]) { console.error(`node ${node} is not in the workflow`); process.exit(2); }
-  const value = raw === "true" ? true : raw === "false" ? false : /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
+  // a JSON string keeps its type: --set fit.resolution='"768"' for a combo whose values are strings
+  const value = raw.startsWith('"') ? JSON.parse(raw)
+    : raw === "true" ? true : raw === "false" ? false : /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
   prompt[node].inputs[field] = value;
   edits[`${node}.${field}`] = value;
 }

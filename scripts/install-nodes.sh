@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Installs the node packs Xólotl's workflow uses into your ComfyUI, at the revisions Xólotl was tested with:
-#   - Xólotl's own four nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around the
-#     person, the first pass's masks carried onto that crop, and the result back at the clip's own size and place. Plain Python and ffmpeg, which ComfyUI needs anyway.
+#   - Xólotl's own six nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around the
+#     person, the first pass's masks carried onto that crop, the person's mask grown, the VAE without the pack's
+#     repeated encode, and the result back at the clip's own size and place. Plain Python and ffmpeg, which ComfyUI needs anyway.
 #   - Akatz Labs' h3_character_swap (GPL-3.0): detection, tracking, masked regeneration and assembly.
 #   - Veda (MIT), learned sparse attention for H3: optional; without it a take runs full attention, about 11 % slower
 #     at 480p on an RTX A4000. It needs Triton, which ships with PyTorch on Linux (triton-windows on Windows).
@@ -16,6 +17,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 rm -rf "$COMFYUI_DIR/custom_nodes/xolotl"
 mkdir -p "$COMFYUI_DIR/custom_nodes/xolotl"
 cp "$HERE/comfy_nodes/xolotl/__init__.py" "$HERE/comfy_nodes/xolotl/nodes.py" "$HERE/comfy_nodes/xolotl/geometry.py" \
+  "$HERE/comfy_nodes/xolotl/reuse.py" "$HERE/comfy_nodes/xolotl/masks.py" \
   "$COMFYUI_DIR/custom_nodes/xolotl/"
 REV=0670e4fdf95adf2262caa4b81afed2a9c4ae4b7b
 TMP=$(mktemp -d)

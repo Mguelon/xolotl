@@ -3,7 +3,7 @@
  * live GPU utilisation and VRAM. Per-node execution events only go to the client that submitted the prompt
  * (the API proxy), so Xólotl shows elapsed time and GPU activity rather than a made-up percentage.
  */
-import type { Installed } from "./swap";
+import { XOLOTL_NODES, type Installed } from "./swap";
 
 export type Gpu = { utilization: number | null; vramUsedGb: number | null; vramTotalGb: number | null; at: string };
 export type Live = { queueRemaining: number | null; gpu: Gpu | null };
@@ -93,10 +93,9 @@ export async function comfyInstalled(): Promise<Installed | null> {
     return response.ok ? response.json() : null;
   };
   try {
-    const [diffusionModels, vaes, vedaPredictors, veda, fit, box, map, restore] = await Promise.all([
+    const [diffusionModels, vaes, vedaPredictors, veda, ...xolotl] = await Promise.all([
       get("/models/diffusion_models"), get("/models/vae"), get("/models/veda"), get("/object_info/VedaSparseAttention"),
-      get("/object_info/XolotlFitVideo"), get("/object_info/XolotlPersonBox"), get("/object_info/XolotlMapMasks"),
-      get("/object_info/XolotlRestoreSize"),
+      ...XOLOTL_NODES.map((name) => get(`/object_info/${name}`)),
     ]);
     const loaded = (info: unknown) => !!info && typeof info === "object" && Object.keys(info).length > 0;
     if (!Array.isArray(diffusionModels) || !Array.isArray(vaes)) return null;
@@ -105,7 +104,7 @@ export async function comfyInstalled(): Promise<Installed | null> {
       vaes,
       vedaPredictors: Array.isArray(vedaPredictors) ? vedaPredictors : [],
       vedaNode: loaded(veda),
-      xolotlNodes: loaded(fit) && loaded(box) && loaded(map) && loaded(restore),
+      xolotl: XOLOTL_NODES.filter((_, i) => loaded(xolotl[i])),
     };
   } catch { return null; }
 }
