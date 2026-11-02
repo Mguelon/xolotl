@@ -251,6 +251,25 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   return graph;
 }
 
+/**
+ * The workflow for ComfyUI without the app (workflows/xolotl.api.json): the app's default take (480p, no mannequin,
+ * no gestures pass, no first frame) with the nodes that describe the picture and write the prompt kept, and one
+ * Seconds node for the part's length, which the slice and both Prepare nodes read. Choose a clip and a picture and
+ * queue it. scripts/standalone.ts writes the file from the template; a test keeps the two in step.
+ */
+export function standaloneWorkflow(template: Graph, seconds = 5): Graph {
+  const graph = swapWorkflow(template, {
+    video: template["30"].inputs.file, character: template["9"].inputs.image, direction: "",
+    start: 0, seconds, size: "480p", seed: Number(template["801"].inputs.seed),
+  });
+  for (const id of PROMPT_NODES) graph[id] = structuredClone(template[id]);
+  graph["801"].inputs.prompt = structuredClone(template["801"].inputs.prompt);
+  graph.seconds = { class_type: "PrimitiveFloat", inputs: { value: seconds }, _meta: { title: "1 · Seconds of the clip to use (5 to 15)" } };
+  graph.trim.inputs.duration = ["seconds", 0];
+  for (const id of ["31", "31a"]) if (graph[id]) graph[id].inputs.duration_seconds = ["seconds", 0];
+  return graph;
+}
+
 export function readSettings(form: FormData): Omit<SwapRequest, "video" | "character" | "anchor"> {
   const start = Number(form.get("start") ?? 0);
   const seconds = Number(form.get("seconds"));

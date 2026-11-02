@@ -8,7 +8,8 @@ gemma4_e2b_it_int8_convrot), or `florence` (Kijai's Florence-2 node, more_detail
 Qwen3.5-0.8B and SmolVLM2-500M ran through a transformers loader node that left the pack when Gemma won (commit
 5c658ec has it). The images are names in ComfyUI's input folder. The first image is timed cold (the model loads), the
 rest warm. Prints one line per image and appends the run to DESCRIBE_OUT
-(default _descargas/mediciones-h3-swap/medidas/descripciones/runs.jsonl).
+(default _descargas/mediciones-h3-swap/medidas/descripciones/runs.jsonl). DESCRIBE_INSTRUCTION="..." tries other words
+for Gemma than the workflow's, to compare instructions on the same pictures before changing the workflow.
 """
 import json, os, sys, time, urllib.request, uuid
 from pathlib import Path
@@ -18,10 +19,15 @@ OUT = Path(os.environ.get("DESCRIBE_OUT", "/home/mike/comfyui/_descargas/medicio
 DESCRIBE = Path(__file__).resolve().parents[1] / "workflows" / "describe.api.json"
 
 
+def instruction():
+    return os.environ.get("DESCRIBE_INSTRUCTION") or json.loads(DESCRIBE.read_text())["gen"]["inputs"]["prompt"]
+
+
 def graph(model, image):
     if model == "gemma4-e2b":
         workflow = json.loads(DESCRIBE.read_text())
         workflow["img"]["inputs"]["image"] = image
+        workflow["gen"]["inputs"]["prompt"] = instruction()
         return workflow
     if model == "florence":
         return {"img": {"class_type": "LoadImage", "inputs": {"image": image}},
@@ -68,6 +74,8 @@ if __name__ == "__main__":
         seconds, wall, text = run(model, image)
         row = {"model": model, "image": image, "cold": i == 0, "comfyui_s": round(seconds, 2), "wall_s": round(wall, 2),
                "words": len(text.split()), "text": text, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        if model == "gemma4-e2b":
+            row["instruction"] = instruction()
         with OUT.open("a") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
         print(f"{model} {image}: ComfyUI {seconds:.2f} s, total {wall:.2f} s{' (con carga)' if i == 0 else ''}, {row['words']} palabras\n  {text}\n")

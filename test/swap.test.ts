@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  CHARACTER_TAG, PROMPT_NODES, XOLOTL_NODES, fitToInstalled, PREFERRED, readSettings, swapPrompt, swapWorkflow, type Graph, type Installed,
+  CHARACTER_TAG, PROMPT_NODES, XOLOTL_NODES, fitToInstalled, PREFERRED, readSettings, standaloneWorkflow, swapPrompt, swapWorkflow,
+  type Graph, type Installed,
 } from "../lib/swap.ts";
 import { estimateMinutes, windowCount } from "../lib/estimates.ts";
 
@@ -274,6 +275,19 @@ test("the app writes the prompt itself, with the description the user saw, so th
   for (const id of PROMPT_NODES) assert.equal(graph[id], undefined, `${id} goes`);
   assert.match(String(graph["801"].inputs.prompt), /<Picture 1>: The character is tall\. keep the glasses$/);
   assert.ok(template.describe, "the template stays untouched");
+});
+
+test("the workflow for ComfyUI without the app is the app's default take, writing its own prompt", () => {
+  const file = JSON.parse(readFileSync(new URL("../workflows/xolotl.api.json", import.meta.url), "utf8")) as Graph;
+  assert.deepEqual(file, standaloneWorkflow(template), "write it again with scripts/standalone.ts after changing the template");
+  assert.deepEqual(file["801"].inputs.prompt, ["prompt_trim", 0], "Gemma and Format Text write the prompt");
+  for (const id of PROMPT_NODES) assert.deepEqual(file[id], template[id], `${id} as in the template`);
+  for (const id of ["mannequin", "lp", "anchor_image"]) assert.equal(file[id], undefined, `no ${id}, as the app by default`);
+  assert.equal(file["803"].inputs.use_anchor, false);
+  assert.deepEqual(file.trim.inputs.duration, ["seconds", 0], "one Seconds node for the part");
+  assert.deepEqual(file["31"].inputs.duration_seconds, ["seconds", 0]);
+  assert.deepEqual(file["31a"].inputs.duration_seconds, ["seconds", 0]);
+  assert.equal(file.seconds.inputs.value, 5);
 });
 
 test("reads and checks the settings", () => {

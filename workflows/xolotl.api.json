@@ -1,0 +1,858 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "H3 Ref2VA · int8"
+    }
+  },
+  "2": {
+    "inputs": {
+      "shift_video": 12,
+      "shift_audio": 3,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3SigmaShift",
+    "_meta": {
+      "title": "H3 sampling shift"
+    }
+  },
+  "3": {
+    "inputs": {
+      "attention": "comfy kitchen attention",
+      "model": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "ModelAttentionBackend",
+    "_meta": {
+      "title": "Optimized attention"
+    }
+  },
+  "4": {
+    "inputs": {
+      "lora_name": "minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Ref2V Turbo · 4-step LoRA"
+    }
+  },
+  "6": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Qwen · H3 text encoder"
+    }
+  },
+  "7": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "H3 video VAE · int8"
+    }
+  },
+  "8": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "H3 audio VAE"
+    }
+  },
+  "9": {
+    "inputs": {
+      "image": "reference.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "2 · Character reference"
+    }
+  },
+  "30": {
+    "inputs": {
+      "file": "source.mp4"
+    },
+    "class_type": "LoadVideo",
+    "_meta": {
+      "title": "1 · Source performance video"
+    }
+  },
+  "31": {
+    "inputs": {
+      "resolution": "480",
+      "duration_seconds": [
+        "seconds",
+        0
+      ],
+      "video": [
+        "fit",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapPrepareVideo",
+    "_meta": {
+      "title": "Prepare · 24 fps / pixel budget"
+    }
+  },
+  "58": {
+    "inputs": {
+      "device": "default",
+      "clip": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "SelectCLIPDevice",
+    "_meta": {
+      "title": "Text encoder device"
+    }
+  },
+  "100": {
+    "inputs": {
+      "ckpt_name": "sam3.1_multiplex_fp16.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "SAM 3.1 · model"
+    }
+  },
+  "101": {
+    "inputs": {
+      "text": "person",
+      "clip": [
+        "100",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "4 · Find the subject"
+    }
+  },
+  "102": {
+    "inputs": {
+      "batch_index": 0,
+      "length": 1,
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch",
+    "_meta": {
+      "title": "Detection frame · first frame · only without Xólotl's nodes"
+    }
+  },
+  "103": {
+    "inputs": {
+      "threshold": 0.35,
+      "refine_iterations": 2,
+      "individual_masks": true,
+      "model": [
+        "100",
+        0
+      ],
+      "image": [
+        "102",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "SAM3_Detect",
+    "_meta": {
+      "title": "Detect individual people · only without Xólotl's nodes"
+    }
+  },
+  "104": {
+    "inputs": {
+      "selection": "largest",
+      "index": 0,
+      "masks": [
+        "103",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapSelectSubject",
+    "_meta": {
+      "title": "Select the person to replace · only without Xólotl's nodes"
+    }
+  },
+  "105": {
+    "inputs": {
+      "detection_threshold": 0.5,
+      "max_objects": 1,
+      "detect_interval": 1,
+      "images": [
+        "31",
+        0
+      ],
+      "model": [
+        "100",
+        0
+      ],
+      "initial_mask": [
+        "104",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "SAM3_VideoTrack",
+    "_meta": {
+      "title": "Track selected person · only without Xólotl's nodes"
+    }
+  },
+  "106": {
+    "inputs": {
+      "object_indices": "",
+      "track_data": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "SAM3_TrackToMask",
+    "_meta": {
+      "title": "Selected track → mask · only without Xólotl's nodes"
+    }
+  },
+  "107": {
+    "inputs": {
+      "source_frames": [
+        "31",
+        5
+      ],
+      "recover_empty_frames": true,
+      "masks": [
+        "106",
+        0
+      ],
+      "images": [
+        "31",
+        0
+      ],
+      "model": [
+        "100",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ],
+      "selection": [
+        "104",
+        1
+      ]
+    },
+    "class_type": "H3CharacterSwapRecoverMasks",
+    "_meta": {
+      "title": "Recover empty frames · same as app · only without Xólotl's nodes"
+    }
+  },
+  "110": {
+    "inputs": {
+      "source_frames": [
+        "31",
+        5
+      ],
+      "expansion_px": 64,
+      "masks": [
+        "map",
+        0
+      ],
+      "images": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "XolotlGrowMasks",
+    "_meta": {
+      "title": "Xólotl · Grow the Person's Mask"
+    }
+  },
+  "800": {
+    "inputs": {
+      "model": [
+        "veda",
+        0
+      ],
+      "clip": [
+        "58",
+        0
+      ],
+      "video_vae": [
+        "reuse",
+        0
+      ],
+      "audio_vae": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapModels",
+    "_meta": {
+      "title": "Shared models"
+    }
+  },
+  "801": {
+    "inputs": {
+      "prompt": [
+        "prompt_trim",
+        0
+      ],
+      "seed": 904239,
+      "audio_guide": true,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "er_sde",
+      "scheduler": "normal",
+      "activation_memory_gib": 17
+    },
+    "class_type": "H3CharacterSwapSettings",
+    "_meta": {
+      "title": "5 · Prompt & audio guide"
+    }
+  },
+  "803": {
+    "inputs": {
+      "source_frames": [
+        "31",
+        5
+      ],
+      "fps": [
+        "31",
+        6
+      ],
+      "use_anchor": false,
+      "use_mask": true,
+      "shot_id": "character-swap",
+      "source_video": [
+        "trim",
+        0
+      ],
+      "source": [
+        "31",
+        0
+      ],
+      "source_audio": [
+        "31",
+        1
+      ],
+      "reference": [
+        "9",
+        0
+      ],
+      "body_mask": [
+        "110",
+        0
+      ],
+      "segment_reference": [
+        "face",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapShot",
+    "_meta": {
+      "title": "Prepare swap inputs"
+    }
+  },
+  "805": {
+    "inputs": {
+      "window_frames": "124",
+      "history_frames": "18",
+      "shot": [
+        "803",
+        0
+      ],
+      "settings": [
+        "801",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapWindowPlan",
+    "_meta": {
+      "title": "Continuation · window / history"
+    }
+  },
+  "806": {
+    "inputs": {
+      "models": [
+        "800",
+        0
+      ],
+      "shot": [
+        "803",
+        0
+      ],
+      "plan": [
+        "805",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapController",
+    "_meta": {
+      "title": "6 · Generate character swap"
+    }
+  },
+  "807": {
+    "inputs": {
+      "filename_prefix": "character-swap",
+      "state": [
+        "806",
+        0
+      ],
+      "shot": [
+        "806",
+        1
+      ]
+    },
+    "class_type": "H3CharacterSwapAssemble",
+    "_meta": {
+      "title": "7 · Result with source audio"
+    }
+  },
+  "808": {
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Video at the canvas size (when Xólotl's nodes are missing)"
+    },
+    "inputs": {
+      "images": [
+        "807",
+        0
+      ],
+      "audio": [
+        "807",
+        1
+      ],
+      "fps": 24,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none"
+    }
+  },
+  "809": {
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "Save result"
+    },
+    "inputs": {
+      "video": [
+        "restore",
+        0
+      ],
+      "filename_prefix": "xolotl/result",
+      "format": "mp4",
+      "format.codec": "h264"
+    }
+  },
+  "850": {
+    "inputs": {
+      "lora_name": "h3_character_swap_v1.5.safetensors",
+      "strength_model": 1,
+      "model": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Character Swap · v1.5 LoRA"
+    }
+  },
+  "reuse": {
+    "inputs": {
+      "vae": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "XolotlReuseEncodes",
+    "_meta": {
+      "title": "Xólotl · Reuse VAE Encodes"
+    }
+  },
+  "trim": {
+    "class_type": "Video Slice",
+    "_meta": {
+      "title": "The chosen part"
+    },
+    "inputs": {
+      "video": [
+        "30",
+        0
+      ],
+      "start_time": 0,
+      "duration": [
+        "seconds",
+        0
+      ],
+      "strict_duration": false
+    }
+  },
+  "veda": {
+    "inputs": {
+      "predictor": "minimax_h3_r2va_veda_preview_fp8.safetensors",
+      "generated_sparsity": "79%",
+      "reference_sparsity": "79%",
+      "full_attention_layers": "",
+      "full_attention_steps": "",
+      "verbose": false,
+      "model": [
+        "850",
+        0
+      ]
+    },
+    "class_type": "VedaSparseAttention",
+    "_meta": {
+      "title": "Veda sparse attention · 79%"
+    }
+  },
+  "fit": {
+    "inputs": {
+      "resolution": "480",
+      "video": [
+        "trim",
+        0
+      ],
+      "crop": [
+        "box",
+        0
+      ]
+    },
+    "class_type": "XolotlFitVideo",
+    "_meta": {
+      "title": "Xólotl · the person's crop on the canvas"
+    }
+  },
+  "restore": {
+    "inputs": {
+      "feather": 6,
+      "images": [
+        "807",
+        0
+      ],
+      "masks": [
+        "110",
+        0
+      ],
+      "fit": [
+        "fit",
+        1
+      ]
+    },
+    "class_type": "XolotlRestoreSize",
+    "_meta": {
+      "title": "Xólotl · back at the clip's size"
+    }
+  },
+  "fit0": {
+    "inputs": {
+      "resolution": "480",
+      "video": [
+        "trim",
+        0
+      ]
+    },
+    "class_type": "XolotlFitVideo",
+    "_meta": {
+      "title": "Xólotl · first pass: whole clip on the canvas"
+    }
+  },
+  "31a": {
+    "inputs": {
+      "resolution": "480",
+      "duration_seconds": [
+        "seconds",
+        0
+      ],
+      "video": [
+        "fit0",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapPrepareVideo",
+    "_meta": {
+      "title": "Prepare · first pass"
+    }
+  },
+  "102a": {
+    "inputs": {
+      "batch_index": 0,
+      "length": 1,
+      "image": [
+        "31a",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch",
+    "_meta": {
+      "title": "First frame · first pass"
+    }
+  },
+  "103a": {
+    "inputs": {
+      "threshold": 0.35,
+      "refine_iterations": 2,
+      "individual_masks": true,
+      "model": [
+        "100",
+        0
+      ],
+      "image": [
+        "102a",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "SAM3_Detect",
+    "_meta": {
+      "title": "SAM 3.1 · find the person · first pass"
+    }
+  },
+  "104a": {
+    "inputs": {
+      "selection": "largest",
+      "index": 0,
+      "masks": [
+        "103a",
+        0
+      ]
+    },
+    "class_type": "H3CharacterSwapSelectSubject",
+    "_meta": {
+      "title": "Select person · first pass"
+    }
+  },
+  "105a": {
+    "inputs": {
+      "detection_threshold": 0.5,
+      "max_objects": 1,
+      "detect_interval": 1,
+      "images": [
+        "31a",
+        0
+      ],
+      "model": [
+        "100",
+        0
+      ],
+      "initial_mask": [
+        "104a",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ]
+    },
+    "class_type": "SAM3_VideoTrack",
+    "_meta": {
+      "title": "SAM 3.1 · track · first pass"
+    }
+  },
+  "106a": {
+    "inputs": {
+      "object_indices": "",
+      "track_data": [
+        "105a",
+        0
+      ]
+    },
+    "class_type": "SAM3_TrackToMask",
+    "_meta": {
+      "title": "Masks · first pass"
+    }
+  },
+  "box": {
+    "inputs": {
+      "margin": 0.2,
+      "min_aspect": 0.5625,
+      "max_aspect": 1.7778,
+      "threshold": 0.5,
+      "masks": [
+        "106a",
+        0
+      ],
+      "fit": [
+        "fit0",
+        1
+      ]
+    },
+    "class_type": "XolotlPersonBox",
+    "_meta": {
+      "title": "Xólotl · frame the person"
+    }
+  },
+  "107a": {
+    "inputs": {
+      "source_frames": [
+        "31a",
+        5
+      ],
+      "recover_empty_frames": true,
+      "masks": [
+        "106a",
+        0
+      ],
+      "images": [
+        "31a",
+        0
+      ],
+      "model": [
+        "100",
+        0
+      ],
+      "conditioning": [
+        "101",
+        0
+      ],
+      "selection": [
+        "104a",
+        1
+      ]
+    },
+    "class_type": "H3CharacterSwapRecoverMasks",
+    "_meta": {
+      "title": "Masks on every frame · first pass"
+    }
+  },
+  "map": {
+    "inputs": {
+      "masks": [
+        "107a",
+        0
+      ],
+      "first": [
+        "fit0",
+        1
+      ],
+      "fit": [
+        "fit",
+        1
+      ]
+    },
+    "class_type": "XolotlMapMasks",
+    "_meta": {
+      "title": "Xólotl · the first pass's masks onto the crop"
+    }
+  },
+  "face": {
+    "class_type": "XolotlFaceCrop",
+    "inputs": {
+      "image": [
+        "9",
+        0
+      ],
+      "size": 800
+    },
+    "_meta": {
+      "title": "Xólotl · Character Face Close-up"
+    }
+  },
+  "describe_model": {
+    "inputs": {
+      "clip_name": "gemma4_e2b_it_int8_convrot.safetensors",
+      "type": "stable_diffusion",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Gemma 4 E2B · describes the character (Comfy-Org/gemma-4, Apache 2.0)"
+    }
+  },
+  "describe": {
+    "inputs": {
+      "clip": [
+        "describe_model",
+        0
+      ],
+      "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph of three sentences; the first starts with \"The character is\". First sentence: their apparent age and build, their skin tone, their hair colour, length and style, their eye colour, and features such as freckles, glasses or make-up. Second sentence: every garment on the upper body with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans or a jacket that reaches the hips. Third sentence: the trousers, skirt or dress with its colour, type and fit. Do not mention the shoes or the feet, the background, the pose or the facial expression. For example: The character is a middle-aged man with a stocky build, olive skin, short curly black hair, brown eyes and a trimmed beard. He wears an open plaid flannel shirt over a white t-shirt, both reaching the belt of his trousers. His trousers are loose grey chinos.",
+      "image": [
+        "9",
+        0
+      ],
+      "max_length": 200,
+      "sampling_mode": "off"
+    },
+    "class_type": "TextGenerate",
+    "_meta": {
+      "title": "<Picture 1> · what the character looks like"
+    }
+  },
+  "direction": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "3 · Your direction (optional): the character is <Picture 1>, the clip <Video 1>"
+    }
+  },
+  "prompt": {
+    "inputs": {
+      "values.a": [
+        "describe",
+        0
+      ],
+      "values.b": [
+        "direction",
+        0
+      ],
+      "f_string": "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. <Picture 1>: {a} {b}"
+    },
+    "class_type": "StringFormat",
+    "_meta": {
+      "title": "The prompt: what to keep, <Picture 1> with its description, your direction"
+    }
+  },
+  "prompt_trim": {
+    "inputs": {
+      "string": [
+        "prompt",
+        0
+      ],
+      "mode": "Both"
+    },
+    "class_type": "StringTrim",
+    "_meta": {
+      "title": "The prompt without a trailing space"
+    }
+  },
+  "seconds": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": 5
+    },
+    "_meta": {
+      "title": "1 · Seconds of the clip to use (5 to 15)"
+    }
+  }
+}

@@ -18,6 +18,7 @@ test("the describe workflow reads the picture and gives its text to a preview", 
   assert.equal(graph.gen.class_type, "TextGenerate");
   assert.deepEqual(graph.gen.inputs.image, ["img", 0]);
   assert.match(graph.gen.inputs.prompt, /^Describe the person in this picture/);
-  assert.match(graph.gen.inputs.prompt, /how far it reaches/, "the garments' length, what kept the sweater down");
+  assert.match(graph.gen.inputs.prompt, /how far it reaches on the body/, "the garments' length, what kept the sweater down");
+  assert.match(graph.gen.inputs.prompt, /Do not mention the shoes or the feet/, "the feet pulled a take into showing them");
   assert.deepEqual(graph.out.inputs.source, ["gen", 0]);
 });

@@ -230,6 +230,33 @@ The described take adds one sentence to Mike's prompt, what the character looks 
 
 An earlier take had already pointed this way: Amara's 13 s take (cd7f6ce1, 2026-11-01) described her in the direction, gestures included, and shows her face; its hand blowing kisses, where the performer has none, came from *blows kisses* in that direction (above, "Facial expressions").
 
+### Describing the character (2026-11-02)
+
+Through the app with no description (b439edd3, the same 13 s, picture and settings), the performer came back: her face won in 9 of the 26 sampled frames, all 7 of the turn, with her white top and her belly. So the app writes the description itself when the picture is chosen, and the user can change it. Four small vision models, each run through ComfyUI on the same four pictures (Renata, Amara, Denim, Inés) with the same instruction, the first picture with the model loading (`scripts/describe-bench.py`; what each wrote is in the measurements' `descripciones/runs.jsonl`):
+
+| Model | Size | Each picture after the first | The first (loads) | How far each garment reaches | Mistakes |
+|---|---|---|---|---|---|
+| Florence-2 large (Kijai's node, `more_detailed_caption`) | 0.77B | 1.2-6.0 s | 6.9 s | no | describes the background and makes up poses; takes no instruction |
+| Qwen3.5-0.8B (transformers, through a loader node, 5c658ec) | 0.87B | 12.6-14.8 s | 14.4 s | yes | Renata's eyes brown, freckles on Inés, who has none, Amara's jacket down to mid-thigh |
+| SmolVLM2-500M | 0.5B | — | — | — | did not run: it needs `num2words`, which ComfyUI does not ship |
+| **Gemma 4 E2B int8** (ComfyUI's own Generate Text) | 2.3B effective | **2.0-2.4 s** | 7.3 s | **yes, on all four** | leaves out Renata's freckles |
+
+Qwen3.5 runs slowly inside ComfyUI because its linear-attention layers fall back to plain PyTorch there (no `flash-linear-attention` or `causal-conv1d` kernels). Gemma needs no node of its own: ComfyUI's text-encoder loader recognises it and Generate Text runs it greedily (`sampling_mode` off), so the same picture always gets the same words. What it wrote for Renata: *The character is a young adult with a slender build and long, wavy, reddish-brown hair that falls past the shoulders. They have light-colored eyes and well-defined eyebrows. They are wearing a bright mustard yellow, long-sleeved, crew-neck sweater that fits relatively snugly and extends to cover the waist area. This is paired with medium-wash blue denim jeans that have a straight leg fit and reach down to the ankles. On their feet, they are wearing white lace-up sneakers with white soles.*
+
+The description goes into the prompt after its tag, `<Picture 1>: The character is …`, the way H3 labels the picture itself (`comfy/text_encoders/minimax.py` puts `<Picture N>: ` before each image's tokens and `<Video N>: ` before each clip's), and the user's direction, if any, comes after it. Through the page as a user would, only the clip and the picture chosen, the description appeared 8.9 s after the picture and Transform waited for it. That take (f01fe819, the same 13 s and picture, seed 2136737094 drawn by the app, 17 min 46 s) kept the performer out of every sampled frame:
+
+| 13 s through the app | Like the character | Like the clip | Frames closer to the clip | The turn (3.5-6.5 s) | Mouth |
+|---|---|---|---|---|---|
+| no description (b439edd3) | 0.44 | 0.30 | 9 of 26 | 7 of 7 | +0.73, partly the performer's own |
+| described by hand (the bake above) | 0.56 | 0.13 | 0 of 26 | 0 of 7 | +0.63 |
+| **described by Gemma** (f01fe819) | 0.52 | 0.12 | **0 of 26** | **0 of 7** | +0.54 |
+
+Its ending is wrong, though: from about 11.5 s, where the performer leans into the camera, the character steps back down the hallway and shows her whole body, sneakers included, while the other takes follow the lean; and its first 8 frames carry a blue blot on the sweater. The same take and seed with only Gemma's last sentence taken out (*On their feet, they are wearing white lace-up sneakers with white soles.*, `bake-run.mjs` from f01fe819, 17 min 24 s) follows the lean to the end and has no blot. With this seed, the sentence about the feet, which the clip does not show at its end, pulled H3 into showing them.
+
+So Gemma's instruction changed, tried on the same four pictures before any take (`DESCRIBE_INSTRUCTION=… scripts/describe-bench.py`; the versions are kept with the measurements, `descripciones/instrucciones/`). Asking it only to leave the shoes out also lost the sweater's length for Renata (*fits snugly on the upper body*) and put Amara's bomber at mid-thigh. A fill-in pattern of one sentence came out terse and made things up when told always to say where the top ends (Inés's *t-shirt that reaches her shoulders*, her leather jacket gone), and wrote what was missing (*no visible eyebrows*). What works is three sentences, with an invented example in the same form that matches none of the pictures: the person (apparent age, build, skin tone, hair, eyes, freckles, glasses or make-up), the garments on the upper body with how far each reaches, then the trousers, skirt or dress; nothing about the shoes or the feet. Renata's: *The character is a young woman with a slender build, fair skin, long wavy auburn hair, and green eyes. She is wearing a bright yellow, long-sleeved, crewneck sweater that reaches to her hips. She is wearing medium-wash blue denim jeans that have a straight fit.* All four came out right in garments and lengths, nothing from the example crept in, and Gemma still misses Renata's freckles and calls Denim's skin medium.
+
+Through the page with that instruction, only the clip and the picture chosen (60a47859, seed 1992313880 drawn by the app, 17 min 20 s): like the character 0.54, like the clip 0.11, the performer in 0 of 26 frames and 0 of 7 in the turn, mouth +0.64; no blot at the start, the sweater down through the turn and the lean followed to the end, as the take described by hand.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.
