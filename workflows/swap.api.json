@@ -329,7 +329,10 @@
   },
   "801": {
     "inputs": {
-      "prompt": "Replace the selected person with the reference character. Preserve source performance, scene and audio timing.",
+      "prompt": [
+        "prompt_trim",
+        0
+      ],
       "seed": 904239,
       "audio_guide": true,
       "steps": 4,
@@ -980,6 +983,75 @@
     },
     "_meta": {
       "title": "Without the calm reference frame"
+    }
+  },
+  "describe_model": {
+    "inputs": {
+      "clip_name": "gemma4_e2b_it_int8_convrot.safetensors",
+      "type": "stable_diffusion",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Gemma 4 E2B · describes the character (Comfy-Org/gemma-4, Apache 2.0)"
+    }
+  },
+  "describe": {
+    "inputs": {
+      "clip": [
+        "describe_model",
+        0
+      ],
+      "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph that starts with \"The character is\". Give their apparent age and build; their hair colour, length and style; their eye colour and features such as eyebrows, freckles or make-up; every garment with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans; and the shoes. Do not describe the background, the pose or the facial expression.",
+      "image": [
+        "9",
+        0
+      ],
+      "max_length": 200,
+      "sampling_mode": "off"
+    },
+    "class_type": "TextGenerate",
+    "_meta": {
+      "title": "<Picture 1> · what the character looks like"
+    }
+  },
+  "direction": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "3 · Your direction (optional): the character is <Picture 1>, the clip <Video 1>"
+    }
+  },
+  "prompt": {
+    "inputs": {
+      "values.a": [
+        "describe",
+        0
+      ],
+      "values.b": [
+        "direction",
+        0
+      ],
+      "f_string": "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. <Picture 1>: {a} {b}"
+    },
+    "class_type": "StringFormat",
+    "_meta": {
+      "title": "The prompt: what to keep, <Picture 1> with its description, your direction"
+    }
+  },
+  "prompt_trim": {
+    "inputs": {
+      "string": [
+        "prompt",
+        0
+      ],
+      "mode": "Both"
+    },
+    "class_type": "StringTrim",
+    "_meta": {
+      "title": "The prompt without a trailing space"
     }
   }
 }

@@ -51,6 +51,7 @@ async function check(): Promise<Health> {
       ["loras", String(template["4"].inputs.lora_name)],
       ["loras", String(template["850"].inputs.lora_name)],
       ["text_encoders", String(template["6"].inputs.clip_name)],
+      ["text_encoders", String(template.describe_model.inputs.clip_name)],
       ["vae", String(template["7"].inputs.vae_name)],
       ["vae", String(template["8"].inputs.vae_name)],
       ["checkpoints", String(template["100"].inputs.ckpt_name)],

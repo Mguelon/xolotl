@@ -10,7 +10,6 @@ Person Mask does, in a fraction of the time, and XolotlReuseEncodes keeps the pa
 XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
 XolotlMannequin turns the clip's person grey in the reference H3 copies the motion from, so it does not copy their looks.
 XolotlNeutralFace gives LivePortrait the clip's calmest face to measure the gestures against.
-XolotlDescribeCharacter writes what the character looks like, for the prompt, with a small vision-language model.
 
 Both nodes cut and decode the original file with the same ffmpeg options, so they see the same frames, and neither
 goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in the pack, so a long
@@ -20,14 +19,12 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 import subprocess
 import tempfile
 import uuid
 from fractions import Fraction
 from pathlib import Path
 
-import comfy.model_management
 import folder_paths
 import numpy as np
 import torch
@@ -39,7 +36,6 @@ from .expressions import neutral_index
 from .mannequin import mannequins
 from .masks import grow as grow_masks
 from .reuse import reusing_encodes
-from .describe import DEFAULT_MODEL, INSTRUCTION, describe as describe_character
 
 FPS = 24  # the pack generates at 24 fps (video.py FPS)
 TIMELINE = f"setpts=PTS-STARTPTS,fps=fps={FPS}:round=near:eof_action=round"  # the pack's own resampling
@@ -486,45 +482,11 @@ class XolotlNeutralFace:
         return (torch.cat([swap[index:index + 1], swap[:count]]), torch.cat([clip[index:index + 1], clip[:count]]), index)
 
 
-class XolotlDescribeCharacter:
-    """What the character looks like, in words, for H3's prompt: a small vision-language model in models/LLM reads the
-    character picture (describe.py). The app shows the words in its description field as soon as the picture is
-    uploaded, and the user can change them before the take."""
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        root = Path(folder_paths.models_dir) / "LLM"
-        names = sorted(p.name for p in root.iterdir() if (p / "config.json").exists()) if root.is_dir() else []
-        if DEFAULT_MODEL in names:
-            names.remove(DEFAULT_MODEL)
-        return {"required": {"image": ("IMAGE",),
-                             "model": ([DEFAULT_MODEL, *names],),
-                             "max_side": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 32}),
-                             "max_new_tokens": ("INT", {"default": 200, "min": 16, "max": 1024}),
-                             "device": (["gpu", "cpu"],)},
-                "optional": {"instruction": ("STRING", {"multiline": True, "default": INSTRUCTION})}}
-
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("description",)
-    FUNCTION = "run"
-    CATEGORY = "Xólotl"
-    DESCRIPTION = "What the character in the picture looks like, written by a small vision-language model."
-
-    def run(self, image, model, max_side, max_new_tokens, device, instruction=INSTRUCTION):
-        picture = (image[0, :, :, :3].clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy()
-        folder = Path(folder_paths.models_dir) / "LLM" / model
-        start = time.perf_counter()
-        text = describe_character(picture, folder, instruction or INSTRUCTION, max_side, max_new_tokens,
-                                  "cpu" if device == "cpu" else str(comfy.model_management.get_torch_device()))
-        logging.info("Xólotl: %s described the character in %.2f s: %s", model, time.perf_counter() - start, text)
-        return (text,)
-
-
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
                        "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize,
                        "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
                        "XolotlFaceCrop": XolotlFaceCrop, "XolotlMannequin": XolotlMannequin,
-                       "XolotlNeutralFace": XolotlNeutralFace, "XolotlDescribeCharacter": XolotlDescribeCharacter}
+                       "XolotlNeutralFace": XolotlNeutralFace}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
@@ -533,5 +495,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes",
                               "XolotlFaceCrop": "Xólotl · Character Face Close-up",
                               "XolotlMannequin": "Xólotl · Grey Mannequin for the Motion",
-                              "XolotlNeutralFace": "Xólotl · The Clip's Calmest Face First",
-                              "XolotlDescribeCharacter": "Xólotl · Describe the Character"}
+                              "XolotlNeutralFace": "Xólotl · The Clip's Calmest Face First"}

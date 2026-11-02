@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { XOLOTL_NODES, fitToInstalled, PREFERRED, readSettings, swapPrompt, swapWorkflow, type Graph, type Installed } from "../lib/swap.ts";
+import {
+  CHARACTER_TAG, PROMPT_NODES, XOLOTL_NODES, fitToInstalled, PREFERRED, readSettings, swapPrompt, swapWorkflow, type Graph, type Installed,
+} from "../lib/swap.ts";
 import { estimateMinutes, windowCount } from "../lib/estimates.ts";
 
 const template = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8")) as Graph;
+const describe = JSON.parse(readFileSync(new URL("../workflows/describe.api.json", import.meta.url), "utf8")) as Graph;
+/** The prompt the face take measured: Xólotl's instruction with the close-up, nothing else. */
+const FACE_PROMPT = "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses "
+  + "and the proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference "
+  + "character's face, hair and clothing. Preserve the scene and the audio timing.";
 const request = {
   video: "clip.mp4",
   character: "hero.png",
@@ -176,10 +183,10 @@ test("gives H3 a close-up of the character's face, cut from the uploaded picture
 });
 
 test("H3 reads the clip as it is by default, and the description keeps the performer's looks out", () => {
-  const graph = swapWorkflow(template, { ...request, direction: "The character is a young woman with long wavy auburn hair." });
+  const graph = swapWorkflow(template, { ...request, direction: "", description: "The character is a young woman with long wavy auburn hair." });
   assert.equal(graph.mannequin, undefined);
   assert.deepEqual(graph["803"].inputs.source, ["31", 0]);
-  assert.match(String(graph["801"].inputs.prompt), /audio timing\. The character is a young woman with long wavy auburn hair\.$/);
+  assert.match(String(graph["801"].inputs.prompt), /audio timing\. <Picture 1>: The character is a young woman with long wavy auburn hair\.$/);
 });
 
 test("shows H3 the person as a grey mannequin when asked", () => {
@@ -223,20 +230,50 @@ test("drops the first-frame nodes when there is none", () => {
 
 test("names the person to replace and what to keep, then the direction", () => {
   assert.equal(
-    swapPrompt("  keep the glasses  ", false, " the woman with long brown hair "),
+    swapPrompt({ direction: "  keep the glasses  ", person: " the woman with long brown hair " }),
     "Replace the woman with long brown hair in <Video 1> with the character in <Picture 1>, keeping that person's gestures "
     + "and poses and the proportions of everything. "
     + "Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. keep the glasses",
   );
-  assert.match(swapPrompt("x", false), /^Replace the person in <Video 1>/, "no description: the person");
-  assert.match(swapPrompt("", true), /Start from the first frame in <Picture 2>\.$/);
+  assert.match(swapPrompt({ direction: "x" }), /^Replace the person in <Video 1>/, "no description: the person");
+  assert.match(swapPrompt({ withAnchor: true }), /Start from the first frame in <Picture 2>\.$/);
+  assert.equal(swapPrompt({ withFace: true }), FACE_PROMPT, "the prompt the face take measured");
+});
+
+test("puts the description after its tag, and the direction after it", () => {
+  assert.equal(CHARACTER_TAG, "<Picture 1>", "H3's own label for the first picture (comfy/text_encoders/minimax.py)");
   assert.equal(
-    swapPrompt("", false, "", true),
-    "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the "
-    + "proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference character's "
-    + "face, hair and clothing. Preserve the scene and the audio timing.",
-    "the prompt the face take measured",
+    swapPrompt({ description: "  The character is a young woman with long wavy auburn hair.  ", direction: " <Picture 1> waves at the end. ", withFace: true }),
+    `${FACE_PROMPT} <Picture 1>: The character is a young woman with long wavy auburn hair. <Picture 1> waves at the end.`,
   );
+  assert.equal(swapPrompt({ description: "  ", withFace: true }), FACE_PROMPT, "no description, no tag");
+  const anchored = swapPrompt({ description: "The character is tall.", withAnchor: true, withFace: true });
+  assert.match(anchored, /<Picture 3> is a close-up .* Start from the first frame in <Picture 2>\. <Picture 1>: The character is tall\.$/);
+});
+
+test("inside ComfyUI the workflow writes the same prompt: Gemma describes <Picture 1>, Format Text adds the direction", () => {
+  assert.deepEqual(template["801"].inputs.prompt, ["prompt_trim", 0]);
+  assert.deepEqual(template.prompt_trim.inputs, { string: ["prompt", 0], mode: "Both" });
+  assert.equal(template.prompt.class_type, "StringFormat");
+  assert.deepEqual(template.prompt.inputs["values.a"], ["describe", 0]);
+  assert.deepEqual(template.prompt.inputs["values.b"], ["direction", 0]);
+  assert.equal(template.direction.inputs.value, "", "no direction by default");
+  assert.equal(template.describe.class_type, "TextGenerate");
+  assert.deepEqual(template.describe.inputs.image, ["9", 0], "the character picture");
+  assert.equal(template.describe.inputs.prompt, describe.gen.inputs.prompt, "the app's instruction");
+  assert.equal(template.describe.inputs.sampling_mode, describe.gen.inputs.sampling_mode);
+  assert.equal(template.describe_model.inputs.clip_name, describe.clip.inputs.clip_name, "the app's model");
+  const format = (a: string, b: string) => String(template.prompt.inputs.f_string).replace("{a}", a).replace("{b}", b).trim();
+  const looks = "The character is a young woman with long wavy auburn hair.";
+  assert.equal(format(looks, ""), swapPrompt({ description: looks, withFace: true }));
+  assert.equal(format(looks, "<Picture 1> waves."), swapPrompt({ description: looks, direction: "<Picture 1> waves.", withFace: true }));
+});
+
+test("the app writes the prompt itself, with the description the user saw, so the take does not describe again", () => {
+  const graph = swapWorkflow(template, { ...request, description: "The character is tall." });
+  for (const id of PROMPT_NODES) assert.equal(graph[id], undefined, `${id} goes`);
+  assert.match(String(graph["801"].inputs.prompt), /<Picture 1>: The character is tall\. keep the glasses$/);
+  assert.ok(template.describe, "the template stays untouched");
 });
 
 test("reads and checks the settings", () => {
@@ -246,9 +283,10 @@ test("reads and checks the settings", () => {
     return data;
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
-    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true, gestures: false,
-    mannequin: false,
+    start: 1.23, seconds: 5, size: "480p", seed: 7, description: "", direction: "x", person: "", steps: 4, turbo: true,
+    gestures: false, mannequin: false,
   });
+  assert.equal(readSettings(form({ seconds: "5", size: "480p", description: "The character is tall." })).description, "The character is tall.");
   assert.equal(readSettings(form({ seconds: "5", size: "480p", gestures: "on" })).gestures, true);
   assert.throws(() => readSettings(form({ seconds: "5", size: "480p", gestures: "maybe" })), /gestures must be/);
   assert.equal(readSettings(form({ seconds: "5", size: "480p" })).mannequin, false, "the mannequin is off by default");

@@ -8,6 +8,8 @@ export type TakeSettings = {
   seconds: number;
   size: string;
   seed: number;
+  /** What the character in <Picture 1> looks like, as the take used it. */
+  description?: string;
   direction: string;
   steps?: number;
   turbo?: boolean;

@@ -6,7 +6,8 @@ export const SIZES = { "480p": "480", "768p": "768" } as const;
 export type SwapSize = keyof typeof SIZES;
 
 const MAX_SEED = 2 ** 32 - 1;
-const MAX_DIRECTION = 500;
+const MAX_DIRECTION = 1200;
+const MAX_DESCRIPTION = 1200; // Gemma 4 E2B wrote 458-518 characters for each of the four bench pictures
 const MAX_PERSON = 120;
 /**
  * The ref2v 4-step turbo LoRA's count: on the same clip and seed it kept the identity and colour of 8 and 20 steps
@@ -25,6 +26,10 @@ export type SwapRequest = {
   video: unknown;
   character: unknown;
   anchor?: unknown;
+  /** What the character in <Picture 1> looks like: ComfyUI writes it as soon as the picture is chosen
+   * (workflows/describe.api.json) and the user can change it; "" leaves it out. */
+  description?: string;
+  /** The user's own words, optional, at the end of the prompt: <Picture 1> is the character and <Video 1> the clip. */
   direction: string;
   /** Who in the clip is replaced, as H3 should recognise them ("the woman with long brown hair"); "" = the person. */
   person?: string;
@@ -40,7 +45,7 @@ export type SwapRequest = {
    * winks, and smears the hands near the face and turns the head twice (docs/measurements.md, "The gestures back"). */
   gestures?: boolean;
   /** true shows H3 the clip's person as a grey mannequin, an option off by default: it keeps the performer's looks out,
-   * and with them her gestures; the character described in `direction` keeps her looks out and the gestures in
+   * and with them her gestures; the character described in `description` keeps her looks out and the gestures in
    * (docs/measurements.md, "The character described"). */
   mannequin?: boolean;
 };
@@ -56,17 +61,49 @@ export const DEFAULT_PERSON = "the person";
  * pack's segment reference, the picture after the anchor: <Picture 3> with one, <Picture 2> without
  * (h3_character_swap relay/passes.py `reference`, conditioning.py drops the anchor's slot).
  */
-export function swapPrompt(direction: string, withAnchor: boolean, person = "", withFace = false): string {
+export const CHARACTER_TAG = "<Picture 1>";
+
+export type PromptParts = {
+  /** What the character looks like; it goes after its tag, "<Picture 1>: The character is …". */
+  description?: string;
+  /** The user's own words, last. */
+  direction?: string;
+  /** Who in the clip is replaced; "" = the person. */
+  person?: string;
+  withAnchor?: boolean;
+  withFace?: boolean;
+};
+
+/**
+ * Each picture's description goes after its tag, as H3 labels the picture itself ("<Picture 1>: " before its tokens), so
+ * a direction that names <Picture 1> refers to a character already described. Without a direction the description is
+ * all H3 needs: it is what kept the performer's looks out of the take (docs/measurements.md, "The character described").
+ */
+export function swapPrompt({ description = "", direction = "", person = "", withAnchor = false, withFace = false }: PromptParts = {}): string {
   const who = person.trim() || DEFAULT_PERSON;
+  const looks = description.trim();
   return [
-    `Replace ${who} in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the`
+    `Replace ${who} in <Video 1> with the character in ${CHARACTER_TAG}, keeping that person's gestures and poses and the`
     + " proportions of everything.",
     withFace ? `<Picture ${withAnchor ? 3 : 2}> is a close-up of the same character's face.` : "",
     "Keep the reference character's face, hair and clothing.",
     "Preserve the scene and the audio timing.",
     withAnchor ? "Start from the first frame in <Picture 2>." : "",
+    looks ? `${CHARACTER_TAG}: ${looks}` : "",
     direction.trim(),
   ].filter(Boolean).join(" ");
+}
+
+/**
+ * The nodes that write the prompt inside ComfyUI when the workflow runs without the app: Gemma 4 E2B describes the
+ * character picture, Format Text puts the description after <Picture 1> and the direction after it, and Trim Text
+ * takes off the space an empty direction leaves. The app writes the same prompt itself (swapPrompt), with the
+ * description the user saw and could change, so a take does not describe the picture twice.
+ */
+export const PROMPT_NODES = ["describe_model", "describe", "direction", "prompt", "prompt_trim"] as const;
+
+function dropPromptNodes(graph: Graph) {
+  for (const id of PROMPT_NODES) delete graph[id];
 }
 
 export function randomSeed(): number {
@@ -186,7 +223,13 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     Object.assign(graph.veda.inputs, { generated_sparsity: sparsity, reference_sparsity: sparsity });
   }
   Object.assign(graph["801"].inputs, {
-    prompt: swapPrompt(request.direction, request.anchor !== undefined, request.person, graph.face !== undefined),
+    prompt: swapPrompt({
+      description: request.description,
+      direction: request.direction,
+      person: request.person,
+      withAnchor: request.anchor !== undefined,
+      withFace: graph.face !== undefined,
+    }),
     seed: request.seed,
     steps: request.steps ?? DEFAULT_STEPS,
   });
@@ -196,6 +239,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   }
   if (!request.gestures) dropGestures(graph);
   if (!request.mannequin) dropMannequin(graph);
+  dropPromptNodes(graph);
   if (request.anchor !== undefined) {
     graph.anchor_image.inputs.image = request.anchor;
   } else {
@@ -212,6 +256,7 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   const seconds = Number(form.get("seconds"));
   const size = String(form.get("size"));
   const seedText = String(form.get("seed") ?? "").trim();
+  const description = form.get("description");
   const direction = form.get("direction");
   const person = form.get("person");
   const stepsText = String(form.get("steps") ?? "").trim();
@@ -242,6 +287,7 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
     seconds: Math.round(seconds * 100) / 100,
     size: size as SwapSize,
     seed,
+    description: typeof description === "string" ? description.slice(0, MAX_DESCRIPTION) : "",
     direction: typeof direction === "string" ? direction.slice(0, MAX_DIRECTION) : "",
     person: typeof person === "string" ? person.trim().slice(0, MAX_PERSON) : "",
   };

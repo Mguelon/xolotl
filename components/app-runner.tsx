@@ -5,7 +5,7 @@ import type { Progress } from "@comfyorg/sdk";
 import { EXAMPLES, type Example } from "../lib/examples";
 import { STRINGS, type Lang } from "../lib/i18n";
 import { jobErrorMessage } from "../lib/job-error";
-import { DEFAULT_STEPS, MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
+import { CHARACTER_TAG, DEFAULT_STEPS, MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
 import { estimateMinutes } from "../lib/estimates";
 import type { TakeMeta } from "../lib/takes";
 import type { Stage, StageName } from "../lib/stage";
@@ -62,13 +62,14 @@ const mmss = (ms: number) => {
 
 function Tile(props: {
   kind: "clip" | "character"; label: string; hint: string; accept: string; disabled: boolean;
-  preview?: string; caption?: string; onPick: (file: File | undefined) => void; onClear: () => void;
+  preview?: string; tag?: string; caption?: string; onPick: (file: File | undefined) => void; onClear: () => void;
 }) {
   const [over, setOver] = useState(false);
   if (props.preview) {
     return (
       <div className={`tile ${props.kind} filled`}>
         {props.kind === "clip" ? <video src={props.preview} muted playsInline /> : <img src={props.preview} alt={props.label} />}
+        {props.tag && <code className="tile-tag">{props.tag}</code>}
         {props.caption && <span className="tile-caption">{props.caption}</span>}
         <button type="button" className="tile-clear" aria-label="Remove" disabled={props.disabled} onClick={props.onClear}>×</button>
       </div>
@@ -98,7 +99,11 @@ export function AppRunner() {
   const [start, setStart] = useState(0);
   const [seconds, setSeconds] = useState(MIN_SECONDS);
   const [size, setSize] = useState<SwapSize>("480p");
+  const [description, setDescription] = useState("");
   const [direction, setDirection] = useState("");
+  const [describing, setDescribing] = useState(false);
+  /** The picture the description in the field belongs to; a newer picture or the user's own words win over a late one. */
+  const describedFor = useRef<File | null>(null);
   const [seed, setSeed] = useState("");
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -184,8 +189,28 @@ export function AppRunner() {
     } catch { setError(true); setMessage(t.err_video); }
   }
 
-  function chooseCharacter(file: File | undefined) {
+  function chooseCharacter(file: File | undefined, describe = true) {
     setCharacter(file ?? null); setJob(null); setSelected(null);
+    describedFor.current = file ?? null;
+    if (file && describe) void describeCharacter(file);
+  }
+
+  /** ComfyUI writes what the character looks like as soon as the picture is chosen; the user can change the words. */
+  async function describeCharacter(file: File) {
+    setDescription(""); setDescribing(true); setError(false); setMessage("");
+    try {
+      const form = new FormData();
+      form.set("character", file);
+      const response = await fetch("/api/describe", { method: "POST", body: form });
+      const body = await response.json() as { description?: string; error?: string };
+      if (describedFor.current !== file) return;
+      if (!response.ok || !body.description) throw new Error(body.error || t.err_describe);
+      setDescription((current) => current.trim() ? current : body.description!);
+    } catch {
+      if (describedFor.current === file) { setError(true); setMessage(t.err_describe); }
+    } finally {
+      if (describedFor.current === file) setDescribing(false);
+    }
   }
 
   async function chooseExample(example: Example) {
@@ -196,8 +221,8 @@ export function AppRunner() {
         fetchFile(example.character, `${example.name.toLowerCase()}.png`, "image/png"),
       ]);
       await chooseVideo(clip);
-      chooseCharacter(person);
-      setDirection(example.direction);
+      chooseCharacter(person, false);
+      setDescription(example.description);
       setMessage((current) => (current === t.loading_example ? "" : current));
     } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : t.err_submit); }
   }
@@ -214,7 +239,7 @@ export function AppRunner() {
     const form = new FormData();
     form.set("video", video); form.set("character", character);
     form.set("start", String(start)); form.set("seconds", String(seconds)); form.set("size", size);
-    form.set("direction", direction); form.set("seed", seed);
+    form.set("description", description); form.set("direction", direction); form.set("seed", seed);
     try {
       const response = await fetch("/api/jobs", { method: "POST", body: form });
       const next = await response.json() as Job & { error?: string };
@@ -322,7 +347,7 @@ export function AppRunner() {
           <div>
             <h2 className="eyebrow"><b>01</b>{t.shot}</h2>
             <Tile kind="clip" label={t.clip_label} hint={t.clip_hint} accept="video/mp4,video/quicktime" disabled={busy}
-              preview={videoUrl} caption={video ? `${video.name} · ${seconds.toFixed(seconds % 1 ? 1 : 0)} s` : undefined}
+              preview={videoUrl} tag="<Video 1>" caption={video ? `${video.name} · ${seconds.toFixed(seconds % 1 ? 1 : 0)} s` : undefined}
               onPick={(file) => void chooseVideo(file)} onClear={() => void chooseVideo(undefined)} />
           </div>
           {video && duration > MIN_SECONDS + 0.05 && (
@@ -334,10 +359,16 @@ export function AppRunner() {
             </div>
           )}
           <Tile kind="character" label={t.character_label} hint={t.character_hint} accept="image/png,image/jpeg,image/webp" disabled={busy}
-            preview={characterUrl} caption={character?.name} onPick={chooseCharacter} onClear={() => chooseCharacter(undefined)} />
+            preview={characterUrl} tag={CHARACTER_TAG} caption={character?.name} onPick={chooseCharacter} onClear={() => chooseCharacter(undefined)} />
           <label className="field">
-            <span className="eyebrow"><b>02</b>{t.direction_label}</span>
-            <textarea value={direction} maxLength={500} disabled={busy} onChange={(event) => setDirection(event.target.value)} placeholder={t.direction_hint} />
+            <span className="eyebrow"><b>02</b>{t.description_label}<code className="tag">{CHARACTER_TAG}</code></span>
+            <textarea className="grow" value={description} maxLength={1200} disabled={busy} onChange={(event) => setDescription(event.target.value)}
+              placeholder={describing ? t.describing : t.description_hint} aria-busy={describing} />
+          </label>
+          <label className="field">
+            <span className="eyebrow"><b>03</b>{t.direction_label}</span>
+            <textarea className="short" value={direction} maxLength={1200} disabled={busy} onChange={(event) => setDirection(event.target.value)}
+              placeholder={t.direction_hint} />
           </label>
           <div className="row">
             <div className="seg" role="group" aria-label={t.quality}>
@@ -352,7 +383,7 @@ export function AppRunner() {
             const estimate = estimateMinutes(size, video ? seconds : 5);
             return estimate ? <p className="estimate">{t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1]))}</p> : null;
           })()}
-          <button type="button" className="run" disabled={!video || !character || busy} onClick={() => void transform()}>{busy ? t.working : t.run}</button>
+          <button type="button" className="run" disabled={!video || !character || busy || describing} onClick={() => void transform()}>{busy ? t.working : t.run}</button>
           <p className="note">{t.note_audio}</p>
         </section>
 
@@ -435,7 +466,7 @@ export function AppRunner() {
           )}
 
           <div className="takes">
-            <h2 className="eyebrow"><b>03</b>{t.takes}</h2>
+            <h2 className="eyebrow"><b>04</b>{t.takes}</h2>
             {takes.length === 0 ? <p className="takes-empty">{t.takes_empty}</p> : (
               <div className="take-list">
                 {takes.map((take) => (

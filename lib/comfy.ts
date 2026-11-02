@@ -27,7 +27,7 @@ export type PublicJob = {
 const TERMINAL = new Set(["succeeded", "failed", "cancelled", "canceled", "error", "expired"]);
 export const isActive = (status: string) => !TERMINAL.has(status);
 
-function client() {
+export function comfyClient() {
   const apiKey = process.env.COMFY_API_KEY?.trim() || undefined;
   if (!process.env.COMFY_BASE_URL?.trim() && !apiKey) {
     throw new Error("Set COMFY_BASE_URL to your comfy-api-proxy (for example http://127.0.0.1:8192).");
@@ -86,7 +86,7 @@ export async function submitSwap(
   files: { video: File; character: File },
   settings: Omit<SwapRequest, "video" | "character" | "anchor">,
 ): Promise<PublicJob> {
-  const api = client();
+  const api = comfyClient();
   const template = await loadTemplate();
   const videoBytes = await bytes(files.video);
   const characterBytes = await bytes(files.character);
@@ -105,7 +105,7 @@ export async function submitSwap(
       createdAt: new Date().toISOString(),
       clip: files.video.name,
       character: files.character.name,
-      settings: { start: settings.start, seconds: settings.seconds, size: settings.size, seed: settings.seed, direction: settings.direction, person: settings.person, steps: settings.steps, turbo: settings.turbo, gestures: settings.gestures, mannequin: settings.mannequin },
+      settings: { start: settings.start, seconds: settings.seconds, size: settings.size, seed: settings.seed, description: settings.description, direction: settings.direction, person: settings.person, steps: settings.steps, turbo: settings.turbo, gestures: settings.gestures, mannequin: settings.mannequin },
       status: job.status,
     },
     portable,
@@ -129,7 +129,7 @@ async function persistResult(id: string, job: Job): Promise<void> {
 }
 
 export async function getJob(id: string): Promise<PublicJob> {
-  const job = await client().jobs.get(id);
+  const job = await comfyClient().jobs.get(id);
   let take = await readTake(id);
   if (take) {
     const now = new Date().toISOString();
@@ -166,7 +166,7 @@ async function whereIs(take: TakeMeta): Promise<{ stage: Stage | null; remaining
 
 /** Ask the proxy to stop a take. ComfyUI drops a queued prompt at once; a running one stops at its next check. */
 export async function cancelJob(id: string): Promise<PublicJob> {
-  const job = await client().jobs.get(id);
+  const job = await comfyClient().jobs.get(id);
   if (!isActive(job.status)) return getJob(id);
   const after = await job.cancel();
   if (after.status === "expired" || after.status === "canceled" || after.status === "cancelled") {
@@ -177,7 +177,7 @@ export async function cancelJob(id: string): Promise<PublicJob> {
 }
 
 export async function getOutput(jobId: string, outputId: string) {
-  const job = await client().jobs.get(jobId);
+  const job = await comfyClient().jobs.get(jobId);
   const output = job.outputs.find((candidate) => candidate.id === outputId);
   if (!output) throw new Error("Output not found on this job.");
   const { url } = await output.getDownloadUrl();

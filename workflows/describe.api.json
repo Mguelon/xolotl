@@ -1,0 +1,52 @@
+{
+  "img": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "character.png"
+    },
+    "_meta": {
+      "title": "The character picture"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "gemma4_e2b_it_int8_convrot.safetensors",
+      "type": "stable_diffusion"
+    },
+    "_meta": {
+      "title": "Gemma 4 E2B (Comfy-Org/gemma-4, Apache 2.0)"
+    }
+  },
+  "gen": {
+    "class_type": "TextGenerate",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph that starts with \"The character is\". Give their apparent age and build; their hair colour, length and style; their eye colour and features such as eyebrows, freckles or make-up; every garment with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans; and the shoes. Do not describe the background, the pose or the facial expression.",
+      "image": [
+        "img",
+        0
+      ],
+      "max_length": 200,
+      "sampling_mode": "off"
+    },
+    "_meta": {
+      "title": "What the character looks like"
+    }
+  },
+  "out": {
+    "class_type": "PreviewAny",
+    "inputs": {
+      "source": [
+        "gen",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "The description"
+    }
+  }
+}

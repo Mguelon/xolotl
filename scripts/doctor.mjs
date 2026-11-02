@@ -24,6 +24,7 @@ const MODELS = [
   ["loras", [graph["4"].inputs.lora_name]],
   ["loras", [graph["850"].inputs.lora_name]],
   ["text_encoders", [graph["6"].inputs.clip_name]],
+  ["text_encoders", [graph.describe_model.inputs.clip_name]],
   ["vae", [graph["7"].inputs.vae_name, "minimax_h3_video_vae_fp16.safetensors"]],
   ["vae", [graph["8"].inputs.vae_name]],
   ["checkpoints", [graph["100"].inputs.ckpt_name]],
