@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Comfy, type Job, type Progress } from "@comfyorg/sdk";
-import { fitToInstalled, swapWorkflow, type Graph, type SwapRequest } from "./swap";
-import { comfyInstalled, comfyLive, comfyTiming, type Gpu } from "./comfyui-progress";
+import { DEFAULT_STEPS, fitToInstalled, swapWorkflow, type Graph, type SwapRequest, type SwapSize } from "./swap";
+import { comfyInstalled, comfyLive, comfyStage, comfyTiming, type Gpu } from "./comfyui-progress";
+import { remainingSeconds, windowCount } from "./estimates";
+import type { Stage } from "./stage";
 import { createTake, hasFile, portableNames, readTake, takeFile, updateTake, type TakeMeta } from "./takes";
 
 export type JobOutput = { id: string; name: string; type: string; url: string };
@@ -17,6 +19,9 @@ export type PublicJob = {
   completedAt: string | null;
   take: TakeMeta | null;
   gpu: Gpu | null;
+  /** Where a running take is (ComfyUI's log) and the seconds it has left; null when they cannot be told. */
+  stage: Stage | null;
+  remainingSeconds: number | null;
 };
 
 const TERMINAL = new Set(["succeeded", "failed", "cancelled", "canceled", "error", "expired"]);
@@ -41,7 +46,7 @@ export function applyModelOverrides(template: Graph): Graph {
   return template;
 }
 
-function publicJob(job: Job, take: TakeMeta | null): PublicJob {
+function publicJob(job: Job, take: TakeMeta | null, where: { stage: Stage | null; remainingSeconds: number | null } = { stage: null, remainingSeconds: null }): PublicJob {
   const snapshot = job.progress;
   // A take we stopped while it was still queued is dequeued at once; the proxy then no longer sees it and says "expired".
   const status = take?.status === "canceled" && job.status === "expired" ? "canceled" : job.status;
@@ -56,6 +61,7 @@ function publicJob(job: Job, take: TakeMeta | null): PublicJob {
       url: `/api/jobs/${job.id}/outputs/${output.id}`,
     })),
     error: job.error,
+    ...where,
     progress: snapshot && (snapshot.value > 0 || (snapshot.nodesTotal ?? 0) > 0) ? snapshot : null,
     queuePosition: job.queuePosition,
     startedAt: job.startedAt?.toISOString() ?? take?.startedAt ?? null,
@@ -99,7 +105,7 @@ export async function submitSwap(
       createdAt: new Date().toISOString(),
       clip: files.video.name,
       character: files.character.name,
-      settings: { start: settings.start, seconds: settings.seconds, size: settings.size, seed: settings.seed, direction: settings.direction, steps: settings.steps, turbo: settings.turbo },
+      settings: { start: settings.start, seconds: settings.seconds, size: settings.size, seed: settings.seed, direction: settings.direction, person: settings.person, steps: settings.steps, turbo: settings.turbo },
       status: job.status,
     },
     portable,
@@ -146,7 +152,16 @@ export async function getJob(id: string): Promise<PublicJob> {
       take = await updateTake(id, { status: job.status, startedAt, completedAt, elapsedMs, timing, error });
     }
   }
-  return publicJob(job, take);
+  return publicJob(job, take, job.status === "running" && take ? await whereIs(take) : undefined);
+}
+
+/** The running take's stage from ComfyUI's log and the seconds it has left by the measured timings. */
+async function whereIs(take: TakeMeta): Promise<{ stage: Stage | null; remainingSeconds: number | null }> {
+  const { size, seconds } = take.settings;
+  const elapsed = take.startedAt ? Math.max(0, (Date.now() - Date.parse(take.startedAt)) / 1000) : 0;
+  const stage = await comfyStage(take.settings.steps ?? DEFAULT_STEPS, windowCount(seconds), elapsed);
+  const remaining = stage ? remainingSeconds(size as SwapSize, seconds, stage, elapsed) : null;
+  return { stage, remainingSeconds: remaining === null ? null : Math.round(remaining) };
 }
 
 /** Ask the proxy to stop a take. ComfyUI drops a queued prompt at once; a running one stops at its next check. */

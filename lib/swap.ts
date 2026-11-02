@@ -14,6 +14,12 @@ const MAX_PERSON = 120;
  */
 export const DEFAULT_STEPS = 4;
 const MAX_STEPS = 100;
+/**
+ * Without the turbo LoRA, H3's own sampling: its official reference-to-video template (comfyui-workflow-templates,
+ * video_minimax_h3_r2v.json) runs 20 steps of res_multistep on the simple schedule through a BasicGuider, i.e. no
+ * CFG, as cfg 1 here. The swap pack's er_sde on the normal schedule is the turbo LoRA's.
+ */
+export const FULL_SAMPLING = { sampler_name: "res_multistep", scheduler: "simple" } as const;
 
 export type SwapRequest = {
   video: unknown;
@@ -37,8 +43,8 @@ export const DEFAULT_PERSON = "the person";
 /**
  * H3's labels are the order of its references: the character image is <Picture 1> and the clip <Video 1> (the pack
  * passes them that way; comfy/text_encoders/minimax.py). The person to replace is named, and what to keep is named one
- * by one. The facial performance itself comes through when the direction describes the gesture ("she purses her lips
- * and blows kisses"): with the generic list alone the body and hands followed the clip and the face stayed neutral
+ * by one. The body, the hands and the head follow the clip; the face's gestures did not, at 480p or at 768p, whatever
+ * the list named, and a gesture written in the direction shows at its own moments rather than the clip's
  * (docs/measurements.md, "Facial expressions").
  */
 export function swapPrompt(direction: string, withAnchor: boolean, person = ""): string {
@@ -143,7 +149,10 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     seed: request.seed,
     steps: request.steps ?? DEFAULT_STEPS,
   });
-  if (request.turbo === false) bypass(graph, "4");
+  if (request.turbo === false) {
+    bypass(graph, "4");
+    Object.assign(graph["801"].inputs, FULL_SAMPLING);
+  }
   if (request.anchor !== undefined) {
     graph.anchor_image.inputs.image = request.anchor;
   } else {

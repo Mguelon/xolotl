@@ -4,6 +4,7 @@
  * (the API proxy), so Xólotl shows elapsed time and GPU activity rather than a made-up percentage.
  */
 import { XOLOTL_NODES, type Installed } from "./swap";
+import { stageFromLog, type LogEntry, type Stage } from "./stage";
 
 export type Gpu = { utilization: number | null; vramUsedGb: number | null; vramTotalGb: number | null; at: string };
 export type Live = { queueRemaining: number | null; gpu: Gpu | null };
@@ -64,6 +65,19 @@ export function comfyLive(): Live {
   connect();
   const gpu = store.live.gpu && Date.now() - new Date(store.live.gpu.at).getTime() < 15000 ? store.live.gpu : null;
   return { queueRemaining: store.live.queueRemaining, gpu };
+}
+
+/**
+ * Where the running take is, from ComfyUI's own log (lib/stage.ts): its stage, step and window. null when ComfyUI is
+ * not reachable from here (Comfy Cloud), and the interface then shows the elapsed time and the estimate only.
+ */
+export async function comfyStage(steps: number, windows: number, startedAgo: number): Promise<Stage | null> {
+  try {
+    const response = await fetch(`${comfyuiUrl()}/internal/logs/raw`, { signal: AbortSignal.timeout(2000) });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { entries?: LogEntry[] };
+    return Array.isArray(body.entries) ? stageFromLog(body.entries, steps, windows, startedAgo) : null;
+  } catch { return null; }
 }
 
 /**

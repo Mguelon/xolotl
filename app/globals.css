@@ -253,6 +253,11 @@ textarea::placeholder { color: var(--text-3); }
 .track { position: relative; height: 6px; border-radius: 999px; background: var(--bg-3); overflow: hidden; }
 .track .fill { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--accent); border-radius: 999px; transition: width .6s var(--ease-out); }
 .track.indeterminate .fill { width: 28%; animation: slide 1.6s var(--ease-out) infinite; }
+.stages { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 0; padding: 0; list-style: none; font-size: 12px; letter-spacing: .03em; color: var(--text-3); }
+.stages li { display: inline-flex; align-items: center; gap: 10px; }
+.stages li + li::before { content: ""; width: 16px; height: 1px; background: var(--line); }
+.stages li.done { color: var(--text-2); }
+.stages li[aria-current="step"] { color: var(--accent); font-weight: 700; }
 @keyframes slide { from { transform: translateX(-120%); } to { transform: translateX(460%); } }
 .progress .detail { color: var(--text-3); font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; }
 .progress .detail b { color: var(--text-2); font-weight: 600; }

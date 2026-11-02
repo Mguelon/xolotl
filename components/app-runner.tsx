@@ -5,9 +5,10 @@ import type { Progress } from "@comfyorg/sdk";
 import { EXAMPLES, type Example } from "../lib/examples";
 import { STRINGS, type Lang } from "../lib/i18n";
 import { jobErrorMessage } from "../lib/job-error";
-import { MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
+import { DEFAULT_STEPS, MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
 import { estimateMinutes } from "../lib/estimates";
 import type { TakeMeta } from "../lib/takes";
+import type { Stage, StageName } from "../lib/stage";
 import { Mark } from "./mark";
 import { Twin } from "./twin";
 
@@ -16,6 +17,7 @@ type Job = {
   id: string; status: string; outputs: Output[]; error?: unknown;
   progress?: Progress | null; queuePosition?: number | null; startedAt?: string | null; completedAt?: string | null; take?: TakeMeta | null;
   gpu?: { utilization: number | null; vramUsedGb: number | null; vramTotalGb: number | null } | null;
+  stage?: Stage | null; remainingSeconds?: number | null;
 };
 type Health = {
   ok: boolean; proxy: { ok: boolean }; comfyui: { ok: boolean; version: string | null; gpu: string | null; vramGb: number | null };
@@ -24,6 +26,7 @@ type Health = {
 type Phase = "idle" | "submitting" | "running";
 
 const ACTIVE = new Set(["queued", "running", "pending", "in_progress", "starting", "canceling"]);
+const STAGES: StageName[] = ["prepare", "encode", "sample", "finish"];
 const CANCELED = new Set(["canceled", "cancelled"]);
 const REPO = "https://github.com/Mguelon/xolotl";
 
@@ -121,6 +124,14 @@ export function AppRunner() {
     try { const body = await (await fetch("/api/takes")).json() as { takes: TakeMeta[] }; setTakes(body.takes); } catch { /* the strip just stays as it was */ }
   }, []);
   useEffect(() => { void loadTakes(); }, [loadTakes]);
+
+  // A take already running (sent from another tab, another machine on the LAN or the API) shows its progress at once.
+  useEffect(() => {
+    if (job || phase !== "idle") return;
+    const running = takes.find((take) => ACTIVE.has(take.status) && take.status !== "canceling");
+    if (running) resume(running);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [takes, job, phase]);
 
   useEffect(() => {
     let stop = false;
@@ -270,12 +281,22 @@ export function AppRunner() {
 
   const elapsedMs = job?.startedAt ? now - new Date(job.startedAt).getTime() : submittedAt.current ? now - submittedAt.current : 0;
   const progress = job?.progress ?? null;
-  const percent = progress && typeof progress.value === "number" && (progress.value > 0 || (progress.nodesTotal ?? 0) > 0)
-    ? Math.round(Math.min(1, Math.max(0, progress.value)) * 100) : null;
+  const stage = active && job?.status === "running" ? job.stage ?? null : null;
+  const remaining = stage ? job?.remainingSeconds ?? null : null;
+  // From ComfyUI's own step count and the measured timings (lib/estimates.ts): the share of the take behind it.
+  const percent = remaining !== null ? Math.min(99, Math.round((elapsedMs / 1000 / (elapsedMs / 1000 + remaining)) * 100))
+    : stage?.name === "finish" ? 99
+    : progress && typeof progress.value === "number" && (progress.value > 0 || (progress.nodesTotal ?? 0) > 0)
+      ? Math.round(Math.min(1, Math.max(0, progress.value)) * 100) : null;
+  const stageText = !stage ? null
+    : stage.name === "sample" && stage.step !== null
+      ? t.stage_sample.replace("{s}", String(stage.step)).replace("{n}", String(stage.steps))
+        + (stage.windows > 1 ? t.stage_window.replace("{w}", String(stage.window)).replace("{n}", String(stage.windows)) : "")
+      : { prepare: t.stage_prepare, encode: t.stage_encode, sample: t.stage_encode, finish: t.stage_finish }[stage.name];
   const phaseText = !job ? message : job.status === "queued" || job.status === "pending"
     ? `${t.phase_queued}${job.queuePosition ? ` #${job.queuePosition}` : ""}`
     : job.status === "canceling" ? t.phase_canceling
-    : ACTIVE.has(job.status) ? t.phase_running : job.status === "succeeded" ? t.phase_done : CANCELED.has(job.status) ? t.canceled : t.failed;
+    : ACTIVE.has(job.status) ? stageText ?? t.phase_running : job.status === "succeeded" ? t.phase_done : CANCELED.has(job.status) ? t.canceled : t.failed;
 
   return (
     <div className="app">
@@ -385,15 +406,28 @@ export function AppRunner() {
               {(active || busy) && !error && (
                 <div className={`track${percent === null ? " indeterminate" : ""}`}><div className="fill" style={{ "--p": `${percent ?? 0}%` } as React.CSSProperties} /></div>
               )}
+              {stage && !error && (
+                <ol className="stages">
+                  {STAGES.map((name, index) => {
+                    const at = STAGES.indexOf(stage.name);
+                    return <li key={name} className={index < at ? "done" : undefined} aria-current={index === at ? "step" : undefined}>
+                      {{ prepare: t.step_prepare, encode: t.step_encode, sample: t.step_sample, finish: t.step_finish }[name]}
+                    </li>;
+                  })}
+                </ol>
+              )}
               <div className="detail">
                 {percent !== null && <span><b>{percent}%</b></span>}
                 {progress?.currentNodeClass && <span>{progress.currentNodeClass}</span>}
                 {progress?.nodesDone != null && progress.nodesTotal != null && <span>{progress.nodesDone}/{progress.nodesTotal} nodes</span>}
-                {progress?.step != null && progress.steps != null && <span>step {progress.step}/{progress.steps}</span>}
+                {!stage && progress?.step != null && progress.steps != null && <span>step {progress.step}/{progress.steps}</span>}
                 {job?.gpu && job.gpu.utilization != null && <span>GPU <b>{job.gpu.utilization}%</b>{job.gpu.vramUsedGb != null ? ` · ${job.gpu.vramUsedGb}${job.gpu.vramTotalGb ? ` / ${job.gpu.vramTotalGb}` : ""} GB` : ""}</span>}
-                {(active || busy) && !error && (() => {
+                {(active || busy) && !error && (remaining !== null || stage?.name === "finish") && (
+                  <span><b>{remaining !== null && remaining >= 60 ? t.left_min.replace("{m}", String(Math.round(remaining / 60))) : t.left_soon}</b></span>
+                )}
+                {(active || busy) && !error && remaining === null && stage?.name !== "finish" && (() => {
                   const settings = job?.take?.settings;
-                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? 8) : estimateMinutes(size, seconds);
+                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS) : estimateMinutes(size, seconds);
                   return <span>{estimate ? t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1])) : t.eta_hint}</span>;
                 })()}
               </div>
@@ -410,7 +444,7 @@ export function AppRunner() {
                       <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
                       <span>
                         <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden /></span>
-                        <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : statusLabel(take.status)} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status === "running" && take.startedAt ? mmss(now - Date.parse(take.startedAt)) : statusLabel(take.status)} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                       </span>
                     </button>
                     {!(ACTIVE.has(take.status) && !CANCELED.has(take.status)) && (

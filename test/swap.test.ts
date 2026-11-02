@@ -36,8 +36,11 @@ test("samples 4 steps through the turbo LoRA by default, or the full schedule wi
   const fast = swapWorkflow(template, request);
   assert.equal(fast["801"].inputs.steps, 4);
   assert.deepEqual(fast["850"].inputs.model, ["4", 0]);
+  assert.deepEqual([fast["801"].inputs.sampler_name, fast["801"].inputs.scheduler], ["er_sde", "normal"], "the turbo LoRA's sampler");
   const full = swapWorkflow(template, { ...request, steps: 20, turbo: false });
   assert.equal(full["801"].inputs.steps, 20);
+  assert.deepEqual([full["801"].inputs.sampler_name, full["801"].inputs.scheduler], ["res_multistep", "simple"], "H3's own template");
+  assert.equal(full["801"].inputs.cfg, 1, "no CFG, as its BasicGuider");
   assert.equal(full["4"], undefined);
   assert.deepEqual(full["850"].inputs.model, ["3", 0]);
   assert.deepEqual(full["800"].inputs.model, ["veda", 0], "Veda stays on the wire");

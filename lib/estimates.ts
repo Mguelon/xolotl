@@ -1,4 +1,5 @@
 import { DEFAULT_STEPS, type SwapSize } from "./swap.ts";
+import type { Stage } from "./stage.ts";
 
 type Timing = {
   trackingPerSecond: number;
@@ -30,6 +31,12 @@ export const TIMING: Record<SwapSize, Timing | null> = {
   "768p": { trackingPerSecond: 8.6, firstFixed: 117, laterFixed: null, perStep: [79.3, 79.3], history: 1.19 },
 };
 
+/**
+ * Seconds from the last step to the saved video: decoding, laying the swap over the clip, saving. 3c3b914c, 5.1 s at
+ * 480p: 27 s; 10b416ca, 5 s at 768p (720x1280): 48 s; cd7f6ce1, 13 s at 480p: 37 s.
+ */
+export const FINISH: Record<SwapSize, number> = { "480p": 30, "768p": 48 };
+
 /** How many H3 windows the pack plans: 124 frames at 24 fps, then 123 new frames per window after 18 of history. */
 export function windowCount(seconds: number): number {
   const frames = Math.floor(seconds * 24);
@@ -42,6 +49,12 @@ export function windowCount(seconds: number): number {
  * every model first).
  */
 export function estimateMinutes(size: SwapSize, seconds: number, steps = DEFAULT_STEPS): [number, number] | null {
+  const total = estimateSeconds(size, seconds, steps);
+  return total && [Math.max(1, Math.floor((total[0] * 0.95) / 60)), Math.ceil((total[1] * 1.05) / 60)];
+}
+
+/** The take's seconds from the loose crop's step time to the tight one's, or null when that size is not measured. */
+function estimateSeconds(size: SwapSize, seconds: number, steps: number): [number, number] | null {
   const timing = TIMING[size];
   if (!timing || !(seconds > 0)) return null;
   const later = windowCount(seconds) - 1;
@@ -49,6 +62,29 @@ export function estimateMinutes(size: SwapSize, seconds: number, steps = DEFAULT
   const laterFixed = timing.laterFixed ?? 0;
   const total = (perStep: number) => timing.trackingPerSecond * seconds + timing.firstFixed + steps * perStep
     + later * (laterFixed + steps * perStep * timing.history);
-  const [loose, tight] = timing.perStep;
-  return [Math.max(1, Math.floor((total(loose) * 0.95) / 60)), Math.ceil((total(tight) * 1.05) / 60)];
+  return [total(timing.perStep[0]), total(timing.perStep[1])];
+}
+
+/**
+ * Seconds left of a running take, or null when they cannot be told (the finish, or a size not measured). While it
+ * samples: ComfyUI's own count for the window's steps left, the windows after it at the step time ComfyUI measures,
+ * and the finish. Before its first step: the measured total less what has passed, never less than the sampling ahead.
+ */
+export function remainingSeconds(size: SwapSize, seconds: number, stage: Stage, elapsed: number): number | null {
+  const timing = TIMING[size];
+  if (!timing || stage.name === "finish") return null;
+  const perStep = stage.secondsPerStep ?? (timing.perStep[0] + timing.perStep[1]) / 2;
+  // what a later window adds: its encoding and the previous one's decode, then its steps with 18 frames of history;
+  // not measured at 768p, where the first window's fixed part stands in
+  const laterWindow = (timing.laterFixed ?? timing.firstFixed) + stage.steps * perStep * timing.history;
+  if (stage.name === "sample" && stage.windowLeft !== null) {
+    return stage.windowLeft + (stage.windows - stage.window) * laterWindow + FINISH[size];
+  }
+  if (stage.window > 1 || stage.step === stage.steps) {
+    const ahead = stage.windows - stage.window + (stage.step === stage.steps ? 0 : 1);
+    return ahead * laterWindow + FINISH[size];
+  }
+  const ahead = stage.steps * perStep + (stage.windows - 1) * laterWindow + FINISH[size];
+  const total = estimateSeconds(size, seconds, stage.steps);
+  return total ? Math.max((total[0] + total[1]) / 2 - elapsed, ahead) : ahead;
 }
