@@ -765,9 +765,9 @@
         1
       ]
     },
-    "class_type": "H3CharacterSwapRecoverMasks",
+    "class_type": "XolotlRecoverMasks",
     "_meta": {
-      "title": "Masks on every frame · first pass"
+      "title": "Xólotl · masks on every frame · first pass, SAM loaded once a batch"
     }
   },
   "map": {

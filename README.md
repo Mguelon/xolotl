@@ -45,7 +45,7 @@ The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo Lo
 git clone https://github.com/Mguelon/xolotl.git && cd xolotl
 npm ci
 
-# 1. The nodes: Xólotl's own ten, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
+# 1. The nodes: Xólotl's own eleven, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
 scripts/install-nodes.sh /path/to/ComfyUI
 
 # 2. The models (~49 GB, open weights; read each model card's licence)
@@ -89,7 +89,7 @@ The prompt always starts with Xólotl's own instruction, *Replace the person in 
 
 ## Which parts of ComfyUI
 
-Core ComfyUI nodes (MiniMax H3, SAM 3.1, video, and *Generate Text* with Gemma 4 E2B for the description), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, ten nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
+Core ComfyUI nodes (MiniMax H3, SAM 3.1, video, and *Generate Text* with Gemma 4 E2B for the description), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, eleven nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
 
 ## The stack is fully open
 
@@ -100,7 +100,7 @@ Core ComfyUI nodes (MiniMax H3, SAM 3.1, video, and *Generate Text* with Gemma 4
 | Ref2V turbo 4-step LoRA v0.1 ([lightx2v/Minimax-h3-Turbo](https://huggingface.co/lightx2v/Minimax-h3-Turbo), packaged in Comfy-Org/MiniMax-H3) | see model card |
 | Veda R2VA sparse-attention predictor ([Veda-Sparse/Minimax-H3-R2VA-Veda-Preview](https://huggingface.co/Veda-Sparse/Minimax-H3-R2VA-Veda-Preview)) | MiniMax H3 Community License |
 | Veda node ([veda-sparse/Veda-on-ComfyUI](https://github.com/veda-sparse/Veda-on-ComfyUI), installed by script) | MIT |
-| Xólotl's ten nodes (`comfy_nodes/xolotl`); the grey mannequin follows D3voz's `H3GreyMannequins` ([comfyui-h3-oneclick-swap](https://github.com/D3voz/comfyui-h3-oneclick-swap), MIT) | MIT |
+| Xólotl's eleven nodes (`comfy_nodes/xolotl`); the grey mannequin follows D3voz's `H3GreyMannequins` ([comfyui-h3-oneclick-swap](https://github.com/D3voz/comfyui-h3-oneclick-swap), MIT) | MIT |
 | YuNet face detector ([OpenCV Zoo](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet), 227 KB, bundled in `comfy_nodes/xolotl/models/`) | MIT |
 | [ComfyUI-LivePortraitKJ](https://github.com/kijai/ComfyUI-LivePortraitKJ) (installed by script) and the LivePortrait weights ([KwaiVGI/LivePortrait](https://huggingface.co/KwaiVGI/LivePortrait), as [Kijai/LivePortrait_safetensors](https://huggingface.co/Kijai/LivePortrait_safetensors)) | MIT |
 | Its face detector: BlazeFace ([hollance/BlazeFace-PyTorch](https://github.com/hollance/BlazeFace-PyTorch)) and [face-alignment](https://github.com/1adrianb/face-alignment)'s 2DFAN4, downloaded on the first take with gestures | Apache-2.0, BSD-3-Clause |

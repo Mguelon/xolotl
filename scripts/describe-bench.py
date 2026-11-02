@@ -16,10 +16,11 @@ loader knows (qwen3vl_4b_fp8_scaled.safetensors, say), DESCRIBE_CLIP_TYPE its lo
 DESCRIBE_WORKFLOW=<file> runs another describe graph (its LoadImage "img", its answer in Preview Any "out"; any other
 Preview Any is printed above it, a first step's list say).
 """
-import json, os, sys, time, urllib.request, uuid
+import json, os, sys, time
 from pathlib import Path
 
-URL = os.environ.get("COMFYUI_URL", "https://comfyui.local").rstrip("/")
+from comfy_run import run as run_graph
+
 OUT = Path(os.environ.get("DESCRIBE_OUT", "/home/mike/comfyui/_descargas/mediciones-h3-swap/medidas/descripciones/runs.jsonl"))
 DESCRIBE = Path(__file__).resolve().parents[1] / "workflows" / "describe.api.json"
 
@@ -53,28 +54,8 @@ def graph(model, image):
     raise SystemExit(f"unknown model {model}: gemma4-e2b or florence")
 
 
-def call(path, body=None):
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(URL + path, data=data, headers={"content-type": "application/json"} if data else {})
-    return json.load(urllib.request.urlopen(req, timeout=600))
-
-
 def run(model, image):
-    start = time.perf_counter()
-    queued = call("/prompt", {"prompt": graph(model, image), "client_id": str(uuid.uuid4())})
-    if queued.get("node_errors"):
-        raise SystemExit(json.dumps(queued["node_errors"])[:1500])
-    pid = queued["prompt_id"]
-    while True:
-        entry = call(f"/history/{pid}").get(pid)
-        if entry and entry.get("status", {}).get("completed") is not None:
-            break
-        time.sleep(0.25)
-    wall = time.perf_counter() - start
-    msgs = {m[0]: m[1] for m in entry["status"].get("messages", [])}
-    if "execution_success" not in msgs:
-        raise SystemExit(json.dumps(entry["status"])[:2000])
-    seconds = (msgs["execution_success"]["timestamp"] - msgs["execution_start"]["timestamp"]) / 1000
+    entry, seconds, wall, _ = run_graph(graph(model, image))
     outputs = entry["outputs"]
     steps = {n: " ".join(" ".join(t for t in o.get("text", []) if isinstance(t, str)).split()) for n, o in outputs.items() if n != "out"}
     for n, t in steps.items():

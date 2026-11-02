@@ -132,11 +132,12 @@ export type Installed = {
   livePortrait: boolean;
 };
 
-/** Xólotl's nodes. The first four give the result back at the clip's size, the next two only save time, the next
- * two keep the character's looks (its face up close, the clip's person as a grey mannequin) and the last gives
+/** Xólotl's nodes. The first four give the result back at the clip's size, the next three only save time, the
+ * next two keep the character's looks (its face up close, the clip's person as a grey mannequin) and the last gives
  * LivePortrait the clip's calmest face for the gestures. */
 export const XOLOTL_NODES = ["XolotlFitVideo", "XolotlPersonBox", "XolotlMapMasks", "XolotlRestoreSize",
-  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlFaceCrop", "XolotlMannequin", "XolotlNeutralFace"] as const;
+  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlRecoverMasks", "XolotlFaceCrop", "XolotlMannequin",
+  "XolotlNeutralFace"] as const;
 
 /** LivePortrait's pass over the swap on the canvas, before it goes back to the clip's size: the clip's calmest face
  * first, both faces cropped, the clip's expressions onto the character's face, pasted back, the calm frame dropped. */
@@ -191,6 +192,9 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   }
   if (graph["110"]?.class_type === "XolotlGrowMasks" && !has("XolotlGrowMasks")) {
     graph["110"].class_type = "H3CharacterSwapExpandMask"; // the pack's own, same inputs, slower
+  }
+  if (graph["107a"]?.class_type === "XolotlRecoverMasks" && !has("XolotlRecoverMasks")) {
+    graph["107a"].class_type = "H3CharacterSwapRecoverMasks"; // the pack's own, same inputs, SAM loaded a frame at a time
   }
   if (graph.restore && !XOLOTL_NODES.slice(0, 4).every(has)) {
     dropGestures(graph);

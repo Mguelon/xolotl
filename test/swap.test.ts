@@ -92,6 +92,10 @@ test("fits the recipe to what ComfyUI has installed", () => {
   const noGrow = fit(without("XolotlGrowMasks"));
   assert.equal(noGrow["110"].class_type, "H3CharacterSwapExpandMask", "the pack grows the mask itself, same inputs");
   assert.deepEqual(noGrow["110"].inputs, template["110"].inputs);
+  const noRecover = fit(without("XolotlRecoverMasks"));
+  assert.equal(noRecover["107a"].class_type, "H3CharacterSwapRecoverMasks", "the pack finds the person itself, same inputs");
+  assert.deepEqual(noRecover["107a"].inputs, template["107a"].inputs);
+  assert.equal(noRecover.map.class_type, "XolotlMapMasks", "the rest of the first pass stays");
   assert.equal(noGrow.restore.class_type, "XolotlRestoreSize", "the rest of Xólotl's path stays");
   assert.equal(fit(without("XolotlMapMasks")).restore, undefined, "a missing core node: the pack's own path");
   const noLivePortrait = fit({ ...all, livePortrait: false });
@@ -144,6 +148,7 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.deepEqual(graph.map.inputs, { masks: ["107a", 0], first: ["fit0", 1], fit: ["fit", 1] });
     assert.deepEqual(graph["110"].inputs.masks, ["map", 0]);
     assert.deepEqual(graph["107a"].inputs.masks, ["106a", 0]);
+    assert.equal(graph["107a"].class_type, "XolotlRecoverMasks", "the pack's recovery of empty frames, SAM loaded once a batch");
     assert.equal(graph["110"].class_type, "XolotlGrowMasks", "the pack's mask growth, without its cost");
     const sparsity = size === "768p" ? "trained" : "79%";
     assert.equal(graph.veda.inputs.generated_sparsity, sparsity, `${size}: Veda's measured budget`);

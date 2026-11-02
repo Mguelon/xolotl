@@ -6,7 +6,8 @@ the person with some room, so the canvas's pixels go to them instead of the scen
 pass's masks onto the crop's canvas, so the person is tracked once. XolotlRestoreSize lays the swap back over the
 clip's own frames, at the clip's own size and place, through the region the swap regenerated: everything outside it
 stays the original footage until the final encode. XolotlGrowMasks grows the person's mask as the pack's Expand
-Person Mask does, in a fraction of the time, and XolotlReuseEncodes keeps the pack from encoding the same frames twice.
+Person Mask does, in a fraction of the time, XolotlReuseEncodes keeps the pack from encoding the same frames twice,
+and XolotlRecoverMasks finds the person where the tracking lost them as the pack does, with SAM loaded once a batch.
 XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
 XolotlMannequin turns the clip's person grey in the reference H3 copies the motion from, so it does not copy their looks.
 XolotlNeutralFace gives LivePortrait the clip's calmest face to measure the gestures against.
@@ -382,6 +383,74 @@ class XolotlReuseEncodes:
         return (reusing_encodes(vae),)
 
 
+RECOVER_BATCH = 32  # empty frames per SAM call: one model load each, about 400 MB of frames at SAM's 1008x1008
+
+
+def _pack_node(name):
+    """A node class of Akatz Labs' h3_character_swap, as ComfyUI registered it (whatever its folder is called)."""
+    import nodes  # ComfyUI's own registry, not this package's module
+
+    node = nodes.NODE_CLASS_MAPPINGS.get(name)
+    if node is None:
+        raise RuntimeError(f"{name} is missing: Xólotl needs Akatz Labs' h3_character_swap (scripts/install-nodes.sh)")
+    return node()
+
+
+class XolotlRecoverMasks:
+    """The pack's Recover Empty Frames with SAM loaded once a batch instead of once a frame. Where the tracking lost
+    the person, the pack runs SAM 3 Detect on that frame alone (threshold 0.35, two refinements, every detection) and
+    keeps the one its Select Person picks, and every call gets the model ready again. Here the pack's own node finds
+    those frames, SAM gets them in batches, which it still reads one by one with the same settings, and the pack's
+    Select Person picks on each, so the masks are the same. Same inputs and outputs, so it takes the pack's place."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"masks": ("MASK",), "images": ("IMAGE",), "model": ("MODEL",),
+                             "conditioning": ("CONDITIONING",), "selection": ("H3_SUBJECT_SELECTION",),
+                             "source_frames": ("INT",), "recover_empty_frames": ("BOOLEAN", {"default": True})}}
+
+    RETURN_TYPES = ("MASK", "STRING")
+    RETURN_NAMES = ("recovered_masks", "report")
+    FUNCTION = "recover"
+    CATEGORY = "Xólotl"
+
+    def recover(self, masks, images, model, conditioning, selection, source_frames, recover_empty_frames):
+        import time
+
+        import comfy.model_management
+        from comfy_extras.nodes_sam3 import SAM3_Detect
+
+        # With recovery off, the pack's node checks the input and lists the empty frames, the masks copied as they are.
+        listed = _pack_node("H3CharacterSwapRecoverMasks").recover(masks, images, model, conditioning, selection,
+                                                                   source_frames, False)
+        result, report = listed["result"]
+        empty = json.loads(report)["empty_tracking_frames"]
+        pick = _pack_node("H3CharacterSwapSelectSubject").select
+        recovered = []
+        start = time.perf_counter()
+        if recover_empty_frames:
+            for first in range(0, len(empty), RECOVER_BATCH):
+                comfy.model_management.throw_exception_if_processing_interrupted()
+                frames = empty[first:first + RECOVER_BATCH]
+                found = SAM3_Detect.execute(model=model, image=images[frames], conditioning=conditioning,
+                                            threshold=.35, refine_iterations=2, individual_masks=True)
+                detections, boxes = found[0], found[1]
+                # With a text prompt alone SAM gives one mask per box, frame after frame: that is how they split.
+                if len(boxes) != len(frames) or len(detections) != sum(map(len, boxes)):
+                    raise RuntimeError("SAM 3 Detect no longer gives one mask per box; use the pack's Recover Empty "
+                                       "Frames (H3CharacterSwapRecoverMasks) in this node's place.")
+                at = 0
+                for frame, frame_boxes in zip(frames, boxes):
+                    result[frame] = pick(detections[at:at + len(frame_boxes)], **selection)[0][0].cpu()
+                    at += len(frame_boxes)
+                    recovered.append(frame)
+        if recovered:
+            logging.info("Xólotl: found the person again on %d empty frames in %.1f s, %d SAM calls", len(recovered),
+                         time.perf_counter() - start, -(-len(recovered) // RECOVER_BATCH))
+        report = json.dumps({"empty_tracking_frames": empty, "recovered_frames": recovered})
+        return {"result": (result, report), "ui": {"text": [report]}}
+
+
 YUNET = Path(__file__).with_name("models") / "face_detection_yunet_2023mar.onnx"  # OpenCV Zoo, MIT (models/LICENSE-yunet)
 
 
@@ -513,6 +582,7 @@ class XolotlImageDetail:
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
                        "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize,
                        "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
+                       "XolotlRecoverMasks": XolotlRecoverMasks,
                        "XolotlFaceCrop": XolotlFaceCrop, "XolotlMannequin": XolotlMannequin,
                        "XolotlNeutralFace": XolotlNeutralFace, "XolotlImageDetail": XolotlImageDetail}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
@@ -521,6 +591,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlRestoreSize": "Xólotl · Restore Clip Size",
                               "XolotlGrowMasks": "Xólotl · Grow the Person's Mask",
                               "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes",
+                              "XolotlRecoverMasks": "Xólotl · Find the Person on Empty Frames",
                               "XolotlFaceCrop": "Xólotl · Character Face Close-up",
                               "XolotlMannequin": "Xólotl · Grey Mannequin for the Motion",
                               "XolotlNeutralFace": "Xólotl · The Clip's Calmest Face First",

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Installs the node packs Xólotl's workflow uses into your ComfyUI, at the revisions Xólotl was tested with:
-#   - Xólotl's own ten nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around the
-#     person, the first pass's masks carried onto that crop, the person's mask grown, the VAE without the pack's
-#     repeated encode, the result back at the clip's own size and place, the close-up of the character's face
+#   - Xólotl's own eleven nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around
+#     the person, the person found again where SAM's tracking lost them, the first pass's masks carried onto that
+#     crop, the person's mask grown, the VAE without the pack's repeated encode, the result back at the clip's own
+#     size and place, the close-up of the character's face
 #     (OpenCV's YuNet, MIT, bundled in models/), the clip's person as a grey mannequin for the motion (after
 #     D3voz's H3GreyMannequins, MIT), the clip's calmest face for LivePortrait and a bigger image budget for Gemma 4,
 #     which describes the character. Plain Python, OpenCV and ffmpeg,
