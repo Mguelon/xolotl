@@ -104,6 +104,18 @@ The pack also VAE-encodes the first window's frames twice: as H3's reference vid
 
 The face does not follow the clip's gestures with this LoRA: not with the pack's wording, the list of things to keep or the person named, not at 768p, not with a close-up of the face as a second reference video (Mickmumpitz's approach; the nodes were taken out again, their code is kept with the measurements), not with H3's full 20 steps. A gesture written in the direction does appear, but at its own moments: in the 13 s take (cd7f6ce1) she smiles where the clip purses her lips. So the prompt names the person and what to keep, and describes no gesture. Akatz's model card warns that expressions "can still drift" and, in an earlier version, that "stronger expression instructions sometimes suppressed the swap"; here the swap held (jacket, braids and face unchanged, background 50.4–50.6 dB on the 5 % left alone). Fine detail on the person 2.75–2.76 in all three (the clip has 2.95). The app's prompt names the person to replace and the list of what to keep (`swapPrompt` in `lib/swap.ts`, an optional `person` field). The sheets with the faces of every take are in the measurement folder.
 
+The other H3 swap LoRA, BFS's character swap v1.1 (Alissonerdx, 80.7 MB, its own licence: no SaaS), works without a mask: the clip goes in as a guide from frame 0 and the whole frame is regenerated, with its v1.1 prompt template as it is. Same clip, character and seed at 512×928: with our 4-step turbo 4 min 07 s (43.3 s per step), with its author's 8-step DMD turbo 6 min 14 s. Its face opens the eyes as the clip does and pushes the lips forward a little, but does not purse them either. How closely the mouth follows, frame by frame (`scripts/mouth-follow.py`: the mouth's width over the eyes' distance with YuNet's landmarks, correlated with the clip's; the clip moves between 0.70 and 0.89, spread 0.038):
+
+| Take | Correlation with the clip | Spread |
+|---|---|---|
+| Akatz, 4 steps, the person named (10c1e9a7) | +0.30 | 0.029 |
+| Akatz, 20 steps without turbo (bb19a546) | +0.40 | 0.028 |
+| Akatz, gesture written in the direction (45a0155a) | +0.17 | 0.039 |
+| BFS, 4-step turbo | +0.22 | 0.042 |
+| BFS, 8-step DMD turbo | +0.24 | 0.045 |
+
+A rough measure (a head turn also narrows the mouth on screen, and the head follows the clip in every take), but it agrees with the faces: nothing follows the mouth closely; BFS and the written gesture move it as much as the clip does, out of step with it.
+
 What the sources say (2026-11-01): the official API guide (Runware) recommends a tight close-up as the performance reference, since "a clean close-up reads more accurately than a wide shot when the model is copying the expression"; Mickmumpitz's *Performance Capture* workflow does that with a DWPose face crop on grey as a second reference video; BFS's own character-swap LoRA (v1.1, guide-latent conditioning, custom licence) asks for "lip movement and facial expression, frame by frame" in its prompt. Those are the next things to try if a clip's gestures still get lost.
 
 ## 768p with the default recipe
