@@ -24,10 +24,10 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 |---|---|---|
 | 5.1 s part, default recipe, person framed | **5 min 08 s** | 1344×768, the clip's own size |
 | 10 s part, default recipe, person framed, two 124-frame windows | **10 min 47 s**, before the two nodes that save time | 1344×768, the clip's own size |
-| 5.1 s part at 768p, the person at native resolution | **9 min 09 s**, before the two nodes that save time | 1344×768, the clip's own size |
+| 5.1 s part at 768p, the person at native resolution | **7 min 58 s** | 1344×768, the clip's own size |
 | 5.1 s part, the reference graph's settings: fp8 H3, 8-step turbo LoRA | 11 min 46 s | 928×512, the pack's canvas |
 
-The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo LoRA, the int8 video VAE and Veda sparse attention at 79 %. Same clip, character and seed in every row; times are ComfyUI's own (`execution_start` → `execution_success`), and the 5.1 s take started from a freshly restarted ComfyUI, so it includes loading every model and tracking the person. The app's estimate before a take is a range built from these runs. The recipe was picked one change at a time, keeping the colours of the reference take: a faster community merge was dropped because it turned the jacket greener. ComfyUI's dynamic VRAM keeps the 16 GB card full in every run, and ComfyUI's container peaked at 48 GiB of RAM at 480p and 50 GiB at 768p (sampled every 10 s). Details, the runs behind the choice and how the time breaks down: [docs/measurements.md](docs/measurements.md).
+The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo LoRA, the int8 video VAE and Veda sparse attention (79 % at 480p, its trained budget at 768p, where it is 9 % faster per step). Same clip, character and seed in every row; times are ComfyUI's own (`execution_start` → `execution_success`), and the 5.1 s take started from a freshly restarted ComfyUI, so it includes loading every model and tracking the person. The app's estimate before a take is a range built from these runs. The recipe was picked one change at a time, keeping the colours of the reference take: a faster community merge was dropped because it turned the jacket greener. ComfyUI's dynamic VRAM keeps the 16 GB card full in every run, and ComfyUI's container peaked at 48 GiB of RAM at 480p and 50 GiB at 768p (sampled every 10 s). Details, the runs behind the choice and how the time breaks down: [docs/measurements.md](docs/measurements.md).
 
 ## Requirements
 
@@ -109,7 +109,7 @@ No partner nodes, no closed API in the path. The first-frame "anchor" that Comfy
 
 ## Limits
 
-One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect about 5 min per 5 s and 10 to 11 min per 10 s at 480p on a 16 GB card, and about 9 min per 5 s at 768p (see the measurements). In a band about 64 px wide around the person the background is regenerated at the model's resolution, so it can be a little softer than the rest of the frame.
+One continuous shot, with the person visible in the first frame; with several people the largest one is swapped. Parts of 5 to 15 s; longer clips are trimmed to the part you choose. The original soundtrack is kept, not regenerated. Expect about 5 min per 5 s and 10 to 11 min per 10 s at 480p on a 16 GB card, and about 8 min per 5 s at 768p (see the measurements). In a band about 64 px wide around the person the background is regenerated at the model's resolution, so it can be a little softer than the rest of the frame.
 
 ## Credits
 

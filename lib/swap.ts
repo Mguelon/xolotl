@@ -104,6 +104,13 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   return graph;
 }
 
+/**
+ * Veda's sparsity per quality. Its R2VA predictor was trained at 1024×768 among other sizes: at 768p its own budget
+ * ("trained", 32 key tiles) takes 79.3 s per step against 87.1 s at 79 %, with the same colour and 1 % less fine
+ * detail. At 480p the canvas is outside its training and no budget beat 79 % (docs/measurements.md).
+ */
+export const VEDA_SPARSITY = { "480p": "79%", "768p": "trained" } as const;
+
 export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   const graph: Graph = structuredClone(template);
   graph["30"].inputs.file = request.video;
@@ -112,6 +119,10 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
   Object.assign(graph["31"].inputs, { resolution: SIZES[request.size], duration_seconds: request.seconds });
   for (const id of ["fit", "fit0"]) if (graph[id]) graph[id].inputs.resolution = SIZES[request.size];
   if (graph["31a"]) Object.assign(graph["31a"].inputs, { resolution: SIZES[request.size], duration_seconds: request.seconds });
+  if (graph.veda) {
+    const sparsity = VEDA_SPARSITY[request.size];
+    Object.assign(graph.veda.inputs, { generated_sparsity: sparsity, reference_sparsity: sparsity });
+  }
   Object.assign(graph["801"].inputs, {
     prompt: swapPrompt(request.direction, request.anchor !== undefined),
     seed: request.seed,

@@ -3,7 +3,7 @@ import { DEFAULT_STEPS, type SwapSize } from "./swap.ts";
 type Timing = {
   trackingPerSecond: number;
   firstFixed: number;
-  laterFixed: number;
+  laterFixed: number | null;
   perStep: [number, number];
   history: number;
 };
@@ -15,7 +15,8 @@ type Timing = {
  * decode. laterFixed: what each later window adds besides sampling (decoding the previous one, encoding its own).
  * perStep: one sampling step of the first window, from a crop that fills the canvas loosely (wide shot of a moving
  * person) to a tight one (more of the canvas regenerated). history: a later window's step over the first's, for the
- * 18 frames of history it carries. null = not measured yet, so the interface says nothing.
+ * 18 frames of history it carries. null = not measured yet, so the interface says nothing (laterFixed null: only
+ * parts that fit in one window).
  */
 export const TIMING: Record<SwapSize, Timing | null> = {
   // 3c3b914c, 5.1 s framed, tight crop (10 645 tokens regenerated), with Xólotl's mask growth and encode reuse:
@@ -24,7 +25,9 @@ export const TIMING: Record<SwapSize, Timing | null> = {
   // canvas: 42.8 and 50.8, the same 1.19 for the history. The growth saves 0.9 s per second of clip
   // (scripts/time-prep.py), the reuse only touches the first window.
   "480p": { trackingPerSecond: 8.6, firstFixed: 74, laterFixed: 109, perStep: [39.6, 47.4], history: 1.19 },
-  "768p": null,
+  // a2cb4adf, 5.1 s framed at 768p, tight crop (15 537 of 28 416 tokens regenerated), Veda's trained budget, the
+  // growth and the reuse: 478.2 s, 79.3 s per step. Only that crop and one window are measured at 768p.
+  "768p": { trackingPerSecond: 8.6, firstFixed: 117, laterFixed: null, perStep: [79.3, 79.3], history: 1.19 },
 };
 
 /** How many H3 windows the pack plans: 124 frames at 24 fps, then 123 new frames per window after 18 of history. */
@@ -42,8 +45,10 @@ export function estimateMinutes(size: SwapSize, seconds: number, steps = DEFAULT
   const timing = TIMING[size];
   if (!timing || !(seconds > 0)) return null;
   const later = windowCount(seconds) - 1;
+  if (later && timing.laterFixed === null) return null;
+  const laterFixed = timing.laterFixed ?? 0;
   const total = (perStep: number) => timing.trackingPerSecond * seconds + timing.firstFixed + steps * perStep
-    + later * (timing.laterFixed + steps * perStep * timing.history);
+    + later * (laterFixed + steps * perStep * timing.history);
   const [loose, tight] = timing.perStep;
   return [Math.max(1, Math.floor((total(loose) * 0.95) / 60)), Math.ceil((total(tight) * 1.05) / 60)];
 }

@@ -51,7 +51,7 @@ test("runs recipe F: int8 H3, the ref2v 4-step LoRA, the int8 VAE and Veda befor
   assert.equal(graph["7"].inputs.vae_name, PREFERRED.vae[0]);
   assert.equal(graph.veda.class_type, "VedaSparseAttention");
   assert.deepEqual(graph.veda.inputs.model, ["850", 0]);
-  assert.equal(graph.veda.inputs.generated_sparsity, "79%");
+  assert.equal(graph.veda.inputs.generated_sparsity, request.size === "768p" ? "trained" : "79%");
   assert.deepEqual(graph["800"].inputs.model, ["veda", 0]);
 });
 
@@ -118,6 +118,9 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.deepEqual(graph["110"].inputs.masks, ["map", 0]);
     assert.deepEqual(graph["107a"].inputs.masks, ["106a", 0]);
     assert.equal(graph["110"].class_type, "XolotlGrowMasks", "the pack's mask growth, without its cost");
+    const sparsity = size === "768p" ? "trained" : "79%";
+    assert.equal(graph.veda.inputs.generated_sparsity, sparsity, `${size}: Veda's measured budget`);
+    assert.equal(graph.veda.inputs.reference_sparsity, sparsity);
     // The pack's only video VAE goes through the node that skips the first window's repeated encode.
     assert.equal(graph.reuse.class_type, "XolotlReuseEncodes");
     assert.deepEqual(graph.reuse.inputs, { vae: ["7", 0] });
@@ -192,5 +195,6 @@ test("estimates minutes from the measured tracking, window and step times", () =
   assert.deepEqual(estimateMinutes("480p", 10), [9, 12], "10:47 before the two nodes that save time");
   assert.deepEqual(estimateMinutes("480p", 15), [15, 19]);
   assert.deepEqual(estimateMinutes("480p", 5, 20), [14, 19]);
-  assert.equal(estimateMinutes("768p", 5), null, "not measured with this recipe yet");
+  assert.deepEqual(estimateMinutes("768p", 5.1), [7, 9], "measured 7:58");
+  assert.equal(estimateMinutes("768p", 10), null, "two windows at 768p are not measured yet");
 });

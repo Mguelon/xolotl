@@ -101,6 +101,10 @@ The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-
 
 Detail on the region any of the four moved (`scripts/check-take.py --peer`); the clip has 6.15 there. The v1.0 LoRA samples at the same speed (the two shorter times are ComfyUI reusing the first pass it had cached), has less detail at both shifts and turns the olive jacket of the character a deeper green: v0.1 stays the default at 768p. At 768p the person comes out at native resolution, 1.08× the 480p take's detail, for 1.64× the time; the earlier fp8 recipe took 30 min 21 s for the same take. ComfyUI's container peaked at 49.6 GiB of RAM.
 
+Veda at 768p: the canvas there, 1024×768, is one of the sizes its R2VA predictor was trained at, unlike the 480p ones. Its own budget (`trained`, 32 key tiles, for the generated video and the references) against 79 %, the same take and seed from the same workflow (`bake-run.mjs`, run D): **79.3 s per step against 87.1 s**, 8 min 34 s against 9 min 09 s with everything computed, jacket 121.62 / 132.42, fine detail 6.34 against 6.42, the same face, braids and hands to the eye. The app now uses `trained` at 768p and keeps 79 % at 480p (`VEDA_SPARSITY` in `lib/swap.ts`).
+
+Through the app with everything above (a2cb4adf: Veda's trained budget, the mask growth, the encode reuse, which also fired at 768p): **7 min 58 s** (478.2 s), 79.3 s per step, jacket 121.74 / 132.49, fine detail 6.32, background 49.58 dB, 5.083 s of sound with 5.083 s of picture, ComfyUI's container at 36.9 GiB of RAM at most.
+
 ## The earlier recipe: fp8, 8 steps
 
 The same 5.17 s clip (124 frames), the same character, seed 904239 in runs 1 and 2, `er_sde`, 480p on the pack's 928×512 canvas. VRAM and RAM sampled every 5 s with `nvidia-smi` and `free`.
