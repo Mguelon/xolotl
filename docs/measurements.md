@@ -131,6 +131,16 @@ The lips purse at the clip's frames, but both takes put a hand to the mouth, blo
 
 Mike, after watching both (2026-11-02): «es preferible que no haga gestos a que los haga feos». The prompt now only asks to keep the gestures, the poses and the proportions of everything, and nothing is written about the gestures themselves.
 
+With that prompt, an empty direction, the person not named and one full-body image of a new character (*Renata*, 036d14b7, 17 min 08 s): the mouth follows the clip at **+0.73** (spread 0.048), because the face is not swapped. Whose face each take shows (`scripts/identity-follow.py`: insightface buffalo_l, every 12th frame, cosine similarity to the character's reference and to the clip's face in the same frame):
+
+| Take | Reference | Like the character | Like the clip | Frames closer to the clip |
+|---|---|---|---|---|
+| *Denim* (abd89408), described, gesture line | one full-body image | 0.23 | 0.38 | 81 % |
+| *Inés* (aae09e52), described, gesture line | simple sheet with the big face | **0.28** | **0.15** | 8 % |
+| *Renata* (036d14b7), the plain prompt, nothing described | one full-body image | 0.02 | **0.81** | 100 % |
+
+The big face in the reference is what carries the identity: from a full-body image, where the face is small, the take keeps most of the clip's face, and all of it with nothing described. *Renata*'s sweater also turns into the performer's cropped top, with her figure, between seconds 4 and 6.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.
