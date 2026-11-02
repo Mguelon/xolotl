@@ -119,7 +119,7 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.equal(graph.fit.inputs.resolution, graph["31"].inputs.resolution, `${size}: one pixel budget`);
     assert.deepEqual(graph["31"].inputs.video, ["fit", 0], "the pack gets the whole clip on its canvas");
     assert.equal(graph.restore.class_type, "XolotlRestoreSize");
-    assert.deepEqual(graph.restore.inputs.images, ["lp_frames", 0], "the swap after the gestures pass");
+    assert.deepEqual(graph.restore.inputs.images, ["807", 0], "the swap as the pack assembled it");
     assert.deepEqual(graph.restore.inputs.masks, ["110", 0], "the region the swap regenerated");
     assert.deepEqual(graph.restore.inputs.fit, ["fit", 1]);
     assert.deepEqual(graph["809"].inputs.video, ["restore", 0]);
@@ -189,15 +189,15 @@ test("shows H3 the person as a grey mannequin", () => {
   assert.deepEqual(partial.mannequin.inputs.masks, ["107", 0], "without the first pass it follows the pack's tracking");
 });
 
-test("gives the character the clip's gestures with LivePortrait, against the clip's calmest face", () => {
-  const graph = swapWorkflow(template, request);
+test("runs LivePortrait's gestures pass only when asked, against the clip's calmest face", () => {
+  const graph = swapWorkflow(template, { ...request, gestures: true });
   assert.deepEqual(graph.lp_pair.inputs, { swap: ["807", 0], clip: ["31", 0], source_frames: ["31", 5] });
   assert.deepEqual(graph.lp.inputs.source_image, ["lp_pair", 0], "the swap's faces get the motion");
   assert.deepEqual(graph.lp.inputs.driving_images, ["lp_crop_clip", 0], "from the clip's faces");
   assert.equal(graph.lp.inputs.relative_motion_mode, "source_video_smoothed");
   assert.deepEqual([graph.lp_frames.inputs.batch_index, graph.lp_frames.inputs.length], [1, ["31", 5]], "the calm frame goes");
   assert.deepEqual(graph.restore.inputs.images, ["lp_frames", 0], "before it goes back to the clip's size");
-  const calm = swapWorkflow(template, { ...request, gestures: false });
+  const calm = swapWorkflow(template, request);
   for (const id of ["lp_pair", "lp_models", "lp_detector", "lp_crop_swap", "lp_crop_clip", "lp", "lp_paste", "lp_frames"]) {
     assert.equal(calm[id], undefined, `${id} goes without the gestures`);
   }
@@ -239,9 +239,9 @@ test("reads and checks the settings", () => {
     return data;
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
-    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true, gestures: true,
+    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true, gestures: false,
   });
-  assert.equal(readSettings(form({ seconds: "5", size: "480p", gestures: "off" })).gestures, false);
+  assert.equal(readSettings(form({ seconds: "5", size: "480p", gestures: "on" })).gestures, true);
   assert.throws(() => readSettings(form({ seconds: "5", size: "480p", gestures: "maybe" })), /gestures must be/);
   assert.equal(readSettings(form({ seconds: "5", size: "480p", person: "  the man in red  " })).person, "the man in red");
   assert.ok(Number.isInteger(readSettings(form({ seconds: "5", size: "768p" })).seed));

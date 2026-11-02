@@ -36,8 +36,8 @@ export type SwapRequest = {
   steps?: number;
   /** false drops the turbo LoRA: full sampling, as in H3's official template (20 steps). */
   turbo?: boolean;
-  /** false drops LivePortrait's pass, which gives the character the clip's pouts, winks and smiles over the mannequin's
-   * calm face: about 2.5 min sooner for 13 s (docs/measurements.md, "The gestures back"). */
+  /** true adds LivePortrait's pass, an experiment off by default: it gives the mannequin's calm face the clip's pouts and
+   * winks, and smears the hands near the face and turns the head twice (docs/measurements.md, "The gestures back"). */
   gestures?: boolean;
 };
 
@@ -190,7 +190,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     bypass(graph, "4");
     Object.assign(graph["801"].inputs, FULL_SAMPLING);
   }
-  if (request.gestures === false) dropGestures(graph);
+  if (!request.gestures) dropGestures(graph);
   if (request.anchor !== undefined) {
     graph.anchor_image.inputs.image = request.anchor;
   } else {
@@ -224,7 +224,7 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   if (turboText && !["on", "off", "true", "false", "1", "0"].includes(turboText)) throw new Error("turbo must be on or off.");
   const turbo = !["off", "false", "0"].includes(turboText);
   if (gesturesText && !["on", "off", "true", "false", "1", "0"].includes(gesturesText)) throw new Error("gestures must be on or off.");
-  const gestures = !["off", "false", "0"].includes(gesturesText);
+  const gestures = ["on", "true", "1"].includes(gesturesText);
   return {
     steps,
     turbo,
