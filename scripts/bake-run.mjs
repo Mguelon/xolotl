@@ -2,10 +2,14 @@
 // Queue ONE measured run on the local ComfyUI from a stored take's workflow, with explicit edits, and record it.
 //
 //   node scripts/bake-run.mjs --take <take-id-prefix> --label <label> [--set <node>.<field>=<value> ...]
-//        [--insert '{"id":"40","class_type":"X","on":["850",0],"input":"model","inputs":{...}}' ...] [--dry] [--wait]
+//        [--insert '{"id":"40","class_type":"X","on":["850",0],"input":"model","inputs":{...}}' ...]
+//        [--add '{"id":"face","class_type":"LoadImage","inputs":{"image":"face.png"}}' ...] [--dry] [--wait]
 //
 // --insert puts a new node on a wire: it reads `on` through `input`, and every node that read `on` reads the new
-// node instead. --dry prints the edits and the rewired consumers without queuing anything.
+// node instead. --add puts a node that reads nothing from the graph (a LoadImage, say); wire it in with --set
+// '803.segment_reference=["face",0]' (a value that starts with ", [ or { is read as JSON). --dry prints the edits and
+// the rewired consumers without queuing anything. Through a waker that lends the GPU (https), let Node trust the system CAs:
+// COMFYUI_URL=https://comfyui.local NODE_USE_SYSTEM_CA=1 node scripts/bake-run.mjs ...
 //
 // The SaveVideo prefix becomes xolotl/bake_<label>. Every run is appended to docs/demo/build/bake-off.json
 // ({ base, runs: [{ label, prompt_id, take, edits, queued_at, outcome?, seconds?, outputs? }] }).
@@ -25,6 +29,7 @@ const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const sets = args.flatMap((a, i) => (a === "--set" ? [args[i + 1]] : []));
 const inserts = args.flatMap((a, i) => (a === "--insert" ? [args[i + 1]] : []));
+const adds = args.flatMap((a, i) => (a === "--add" ? [args[i + 1]] : []));
 const dry = args.includes("--dry");
 const take = opt("--take"), label = opt("--label"), wait = args.includes("--wait");
 if (!take || !label) { console.error("usage: bake-run.mjs --take <id-prefix> --label <label> [--set node.field=value ...] [--insert <json> ...] [--dry] [--wait]"); process.exit(2); }
@@ -34,13 +39,22 @@ if (!dir) { console.error(`no take starts with ${take}`); process.exit(2); }
 const prompt = JSON.parse(readFileSync(join(TAKES, dir, "workflow.json"), "utf8"));
 
 const edits = {};
+for (const raw of adds) {
+  let spec;
+  try { spec = JSON.parse(raw); } catch { console.error(`bad --add ${raw}`); process.exit(2); }
+  const { id, class_type, inputs = {} } = spec;
+  if (!id || !class_type) { console.error(`--add needs id and class_type: ${raw}`); process.exit(2); }
+  if (prompt[id]) { console.error(`node ${id} already exists`); process.exit(2); }
+  prompt[id] = { class_type, inputs };
+  edits[`add.${id}`] = { class_type, inputs };
+}
 for (const s of sets) {
   const m = /^(\w+)\.([^=]+)=(.*)$/.exec(s);
   if (!m) { console.error(`bad --set ${s}`); process.exit(2); }
   const [, node, field, raw] = m;
   if (!prompt[node]) { console.error(`node ${node} is not in the workflow`); process.exit(2); }
-  // a JSON string keeps its type: --set fit.resolution='"768"' for a combo whose values are strings
-  const value = raw.startsWith('"') ? JSON.parse(raw)
+  // a JSON value keeps its type: --set fit.resolution='"768"' for a combo whose values are strings, a link as ["id",0]
+  const value = /^["[{]/.test(raw) ? JSON.parse(raw)
     : raw === "true" ? true : raw === "false" ? false : /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
   prompt[node].inputs[field] = value;
   edits[`${node}.${field}`] = value;
