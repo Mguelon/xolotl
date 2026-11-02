@@ -82,6 +82,10 @@ A 10 s part of the same terrace (fde01df1, same character and seed, two windows)
 
 Through the app (`scripts/check-take.py`, the 5.1 s take above, before *Frame the Person*): 1344×768 and 122 frames, the same count as F. On the 44.7 % of the frame the swap left alone, the result matches the clip at 49.68 / 53.65 / 53.62 dB with biases under 0.03 levels, and that background's gradient is 1.03 times the clip's: as sharp as the original. The jacket reads 121.83 / 132.15 against 121.78 / 132.07 for F.
 
+## The workflow without the app (2026-11-02)
+
+`workflows/xolotl.api.json` run end to end as someone would from the editor (`scripts/standalone-run.py`: the clip in *Load Video*, the picture in *Load Image*, the default 5 s, queue): **5 min 27 s** (327.1 s), 720×1280 like the clip, 120 frames at 24 fps with its audio. Its own nodes wrote the prompt, and Gemma's description of the picture came out word for word the one the app wrote for it (take 2d45a004): the same model, greedy, at the same 1120 image tokens. The character holds through the five seconds (sheet in the measurement folder, `sin-app/`).
+
 ## Three nodes that save time
 
 Between the person's tracking and the first window the pack grows the person's mask by 64 px with scipy's exact distance transform, frame by frame, and also builds a colour overlay of the whole clip that nothing reads. `scripts/time-prep.py` times it in the container on 243 frames: 10.3 s at 896×512 and 22.4 s at 1024×768. Xólotl's *Grow the Person's Mask* gives the same masks (checked against scipy pixel for pixel, `comfy_nodes/xolotl/test_masks.py`) with OpenCV's exact distance transform over 8 threads, without the overlay: 1.3 s and 2.4 s. On the GPU the 5.1 s take (6dbe3ceb) came out **byte-identical** to the 5 min 34 s take (d431fad3), all 122 frames: the pipeline repeats bit for bit with the same seed, and the growth saved 4.5 s before the first window (18.0 s to 13.5 s).
