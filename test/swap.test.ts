@@ -85,14 +85,20 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.deepEqual(noGrow["110"].inputs, template["110"].inputs);
   assert.equal(noGrow.restore.class_type, "XolotlRestoreSize", "the rest of Xólotl's path stays");
   assert.equal(fit(without("XolotlMapMasks")).restore, undefined, "a missing core node: the pack's own path");
+  const noFace = fit(without("XolotlFaceCrop"));
+  assert.equal(noFace.face, undefined);
+  assert.equal(noFace["803"].inputs.segment_reference, undefined, "the full picture alone");
+  assert.doesNotMatch(String(swapWorkflow(noFace, request)["801"].inputs.prompt), /close-up/, "and the prompt says nothing of it");
+  assert.equal(noFace.restore.class_type, "XolotlRestoreSize", "the rest of Xólotl's path stays");
   const bare = fit({ ...all, xolotl: [] });
   assert.equal(bare.fit, undefined);
   assert.equal(bare.restore, undefined);
+  assert.equal(bare.face, undefined);
   assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
   assert.deepEqual(bare["809"].inputs.video, ["808", 0], "and the result is saved at its canvas size");
   for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "107a", "box", "map"]) assert.equal(bare[id], undefined, `${id} goes too`);
   assert.deepEqual(bare["110"].inputs.masks, ["107", 0], "the pack tracks the person on its own canvas");
-  assert.ok(!/\["(fit|fit0|restore|box|map|\d+a)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
+  assert.ok(!/\["(fit|fit0|restore|box|map|face|\d+a)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
 });
 
 test("gives the result back at the clip's own size through Xólotl's nodes", () => {
@@ -148,6 +154,17 @@ test("uses the first frame through a crop when there is one", () => {
   assert.match(String(graph["801"].inputs.prompt), /<Picture 2>/);
 });
 
+test("gives H3 a close-up of the character's face, cut from the uploaded picture", () => {
+  const graph = swapWorkflow(template, request);
+  assert.equal(graph.face.class_type, "XolotlFaceCrop");
+  assert.deepEqual(graph.face.inputs.image, ["9", 0]);
+  assert.deepEqual(graph["803"].inputs.segment_reference, ["face", 0]);
+  assert.match(String(graph["801"].inputs.prompt), /everything\. <Picture 2> is a close-up of the same character's face\. Keep/);
+  const anchored = String(swapWorkflow(template, { ...request, anchor: "anchor.png" })["801"].inputs.prompt);
+  assert.match(anchored, /<Picture 3> is a close-up of the same character's face\./, "after the anchor");
+  assert.match(anchored, /Start from the first frame in <Picture 2>\./);
+});
+
 test("drops the first-frame nodes when there is none", () => {
   const graph = swapWorkflow(template, request);
   assert.equal(graph.anchor_image, undefined);
@@ -166,6 +183,13 @@ test("names the person to replace and what to keep, then the direction", () => {
   );
   assert.match(swapPrompt("x", false), /^Replace the person in <Video 1>/, "no description: the person");
   assert.match(swapPrompt("", true), /Start from the first frame in <Picture 2>\.$/);
+  assert.equal(
+    swapPrompt("", false, "", true),
+    "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the "
+    + "proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference character's "
+    + "face, hair and clothing. Preserve the scene and the audio timing.",
+    "the prompt the face take measured",
+  );
 });
 
 test("reads and checks the settings", () => {

@@ -141,6 +141,21 @@ With that prompt, an empty direction, the person not named and one full-body ima
 
 The big face in the reference is what carries the identity: from a full-body image, where the face is small, the take keeps most of the clip's face, and all of it with nothing described. *Renata*'s sweater also turns into the performer's cropped top, with her figure, between seconds 4 and 6.
 
+### The character's face as a second picture (2026-11-02)
+
+The fix has to hold for any picture someone uploads, so it went into the graph, not into the choice of character. The first 4.8 s of the same clip (115 frames, one window, 480p, seed 4048927270, the plain prompt), *Renata*'s one full-body image as `<Picture 1>`, and one thing changed per take (`scripts/bake-run.mjs`, `scripts/measure-take.sh`):
+
+| Take (4.8 s) | What else H3 gets | Like the character | Like the clip | Frames closer to the clip | Mouth | ComfyUI |
+|---|---|---|---|---|---|---|
+| `renata48-base` | nothing | 0.15 | **0.61** | 100 % | +0.51 | 5 min 03 s |
+| `renata48-ancla` | a first frame: the clip's frame redrawn as her by Qwen-Image-Edit 2511, her face warped on, as the anchor | 0.39 | 0.21 | 40 % | +0.59 | 5 min 44 s |
+| `renata48-cara` | a close-up of her face drawn by 2511, as the segment reference (`<Picture 2>`) | 0.48 | 0.14 | 0 % | +0.48 | 5 min 12 s |
+| `renata48-recorte` | **her face cut from her own picture and enlarged** (`XolotlFaceCrop`), as the segment reference | **0.53** | 0.15 | **0 %** | **+0.60** | 5 min 12 s |
+
+The anchor holds her face until she turns (frame ~84) and then loses it to the performer, white top and grey jeans included. A close-up of her face as a picture of its own keeps her in every sampled frame, and cutting it from the uploaded picture does better than drawing it: her own face, not a redrawing of it, with no edit model (about 22 GB) and no extra time. The mouth follows the clip more closely too. The prompt adds one sentence after the first: *<Picture 2> is a close-up of the same character's face.* (`<Picture 3>` when an anchor comes first).
+
+`XolotlFaceCrop` finds the largest face with YuNet (OpenCV Zoo, MIT, 227 KB, bundled in `comfy_nodes/xolotl/models/`) and cuts a square 2.5 face heights wide with the face's centre at 37 % from the top, the framing of the drawn close-up; a picture smaller than that is enlarged with Lanczos. On *Inés*'s simple sheet it picks the big face. A picture where it finds no face goes to H3 whole, so a take never stops for it.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.

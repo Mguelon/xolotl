@@ -65,3 +65,20 @@ for bbox in [[0, 0, 1, 1], [900, 500, 928, 512], [100, 100, 101, 400], [-50, -50
     assert 0 <= b["x"] and 0 <= b["y"] and b["x"] + b["w"] <= 1920 and b["y"] + b["h"] <= 1080 and b["w"] >= 2 and b["h"] >= 2, (bbox, b)
     assert b["x"] % 2 == 0 and b["y"] % 2 == 0 and b["w"] % 2 == 0 and b["h"] % 2 == 0, (bbox, b)
 print("person box: ok")
+
+# The face close-up in a 1024 × 1792 full-body picture: 2.5 face heights, the face's centre at 37 % from the top.
+square = geometry.face_square
+assert square((400, 300, 200, 240), 1024, 1792) == (200, 198, 600)
+# Near the top or a side the square slides inside the picture; a narrow picture gives its own width.
+assert square((10, 5, 200, 240), 1024, 1792)[:2] == (0, 0)
+assert square((900, 1700, 100, 80), 1024, 1792) == (824, 1592, 200)
+assert square((100, 100, 200, 400), 600, 2000) == (0, 78, 600)
+for box in [(0, 0, 50, 60), (500, 900, 300, 380), (1000, 1780, 24, 12)]:
+    x0, y0, side = square(box, 1024, 1792)
+    assert 0 <= x0 and 0 <= y0 and x0 + side <= 1024 and y0 + side <= 1792 and side > 0, box
+try:
+    square((0, 0, 0, 10), 100, 100)
+    raise AssertionError("an empty box must fail")
+except ValueError:
+    pass
+print("face square: ok")

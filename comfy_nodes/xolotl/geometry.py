@@ -74,3 +74,24 @@ def person_box(bbox, fit: dict, margin: float = 0.2, min_aspect: float = 9 / 16,
     left, top = int(x0 // 2 * 2), int(y0 // 2 * 2)
     right, bottom = min(width, -(-int(x0 + w) // 2) * 2), min(height, -(-int(y0 + h) // 2) * 2)
     return {"x": left, "y": top, "w": right - left, "h": bottom - top}
+
+
+FACE_SPAN = 2.5    # the close-up's side, in face heights: hair, neck and the top of the shoulders
+FACE_ABOVE = 0.37  # where the face box's centre sits from the top of the close-up: the eyes at about a third
+
+
+def face_square(box, width: int, height: int, span: float = FACE_SPAN, above: float = FACE_ABOVE) -> tuple[int, int, int]:
+    """The square close-up around a detected face box (x, y, w, h) in a width × height image: (x0, y0, side).
+
+    The framing of the drawn close-up that first held the character's face in the take; cut this way from her own
+    picture, 0.53 like her and 0.15 like the clip's performer (docs/measurements.md). The square stays inside the image: near an edge it slides, and when the
+    image is narrower than the framing it shrinks to the image's short side.
+    """
+    x, y, fw, fh = box
+    if not (fw > 0 and fh > 0):
+        raise ValueError("The face box is empty.")
+    side = int(min(span * fh, width, height))
+    cx, cy = x + fw / 2, y + fh / 2
+    x0 = int(round(min(max(cx - side / 2, 0), width - side)))
+    y0 = int(round(min(max(cy - above * side, 0), height - side)))
+    return x0, y0, side

@@ -379,6 +379,10 @@
       "body_mask": [
         "110",
         0
+      ],
+      "segment_reference": [
+        "face",
+        0
       ]
     },
     "class_type": "H3CharacterSwapShot",
@@ -781,6 +785,19 @@
     "class_type": "XolotlMapMasks",
     "_meta": {
       "title": "Xólotl · the first pass's masks onto the crop"
+    }
+  },
+  "face": {
+    "class_type": "XolotlFaceCrop",
+    "inputs": {
+      "image": [
+        "9",
+        0
+      ],
+      "size": 800
+    },
+    "_meta": {
+      "title": "Xólotl · Character Face Close-up"
     }
   }
 }

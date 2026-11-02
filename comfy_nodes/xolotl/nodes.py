@@ -7,6 +7,7 @@ pass's masks onto the crop's canvas, so the person is tracked once. XolotlRestor
 clip's own frames, at the clip's own size and place, through the region the swap regenerated: everything outside it
 stays the original footage until the final encode. XolotlGrowMasks grows the person's mask as the pack's Expand
 Person Mask does, in a fraction of the time, and XolotlReuseEncodes keeps the pack from encoding the same frames twice.
+XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
 
 Both nodes cut and decode the original file with the same ffmpeg options, so they see the same frames, and neither
 goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in the pack, so a long
@@ -15,6 +16,7 @@ goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixe
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import tempfile
 import uuid
@@ -27,7 +29,7 @@ import torch
 import torch.nn.functional as F
 from comfy_api.latest._input_impl.video_types import VideoFromFile
 
-from .geometry import PIXEL_BUDGETS, fit_canvas, person_box
+from .geometry import PIXEL_BUDGETS, face_square, fit_canvas, person_box
 from .masks import grow as grow_masks
 from .reuse import reusing_encodes
 
@@ -376,12 +378,56 @@ class XolotlReuseEncodes:
         return (reusing_encodes(vae),)
 
 
+YUNET = Path(__file__).with_name("models") / "face_detection_yunet_2023mar.onnx"  # OpenCV Zoo, MIT (models/LICENSE-yunet)
+
+
+class XolotlFaceCrop:
+    """The character's face, cut from the character picture and enlarged: the close-up H3 gets as a second picture.
+
+    With only a full-body picture the take kept the performer's face (Renata: 0.15 like her, 0.61 like the clip); with
+    this close-up of her face beside it, 0.53 against 0.15, and the mouth followed the clip more closely
+    (docs/measurements.md). YuNet finds the largest face and the square around it (geometry.face_square) is resized,
+    with Lanczos when enlarged. A picture where it finds no face goes through whole, so a take never stops for it.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"image": ("IMAGE",),
+                             "size": ("INT", {"default": 800, "min": 256, "max": 2048, "step": 16})}}
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("close_up",)
+    FUNCTION = "crop"
+    CATEGORY = "Xólotl"
+    DESCRIPTION = "The character's face, cut from its picture and enlarged, for H3's segment reference."
+
+    def crop(self, image, size):
+        import cv2  # OpenCV ships with ComfyUI's usual environments; only this node needs it
+
+        picture = (image[0, :, :, :3].clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy()
+        height, width = picture.shape[:2]
+        detector = cv2.FaceDetectorYN.create(str(YUNET), "", (width, height), 0.6, 0.3, 50)
+        _, faces = detector.detect(np.ascontiguousarray(picture[:, :, ::-1]))  # YuNet reads BGR
+        if faces is None or not len(faces):
+            logging.info("Xólotl: no face found in the character picture; it goes whole as the close-up")
+            return (image[:1],)
+        x0, y0, side = face_square(faces[np.argmax(faces[:, 2] * faces[:, 3])][:4], width, height)
+        square = picture[y0:y0 + side, x0:x0 + side]
+        method = cv2.INTER_LANCZOS4 if side < size else cv2.INTER_AREA
+        close_up = cv2.resize(square, (size, size), interpolation=method)
+        logging.info("Xólotl: the character's face close-up, %d px square at (%d, %d) of %d×%d", side, x0, y0, width,
+                     height)
+        return (torch.from_numpy(close_up).float().div(255).unsqueeze(0),)
+
+
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
                        "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize,
-                       "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes}
+                       "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
+                       "XolotlFaceCrop": XolotlFaceCrop}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
                               "XolotlRestoreSize": "Xólotl · Restore Clip Size",
                               "XolotlGrowMasks": "Xólotl · Grow the Person's Mask",
-                              "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes"}
+                              "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes",
+                              "XolotlFaceCrop": "Xólotl · Character Face Close-up"}

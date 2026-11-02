@@ -45,13 +45,16 @@ export const DEFAULT_PERSON = "the person";
  * passes them that way; comfy/text_encoders/minimax.py). What to keep is only what Mike asked for (2026-11-02: «solo
  * decirle que conserve los gestos y las poses y las proporciones de todo»), nothing written about the gestures
  * themselves: «blows kisses» in the direction put a hand to the mouth where the clip has none (Denim and Inés, the same
- * frames; docs/measurements.md, "Facial expressions").
+ * frames; docs/measurements.md, "Facial expressions"). The close-up of the character's face (XolotlFaceCrop) is the
+ * pack's segment reference, the picture after the anchor: <Picture 3> with one, <Picture 2> without
+ * (h3_character_swap relay/passes.py `reference`, conditioning.py drops the anchor's slot).
  */
-export function swapPrompt(direction: string, withAnchor: boolean, person = ""): string {
+export function swapPrompt(direction: string, withAnchor: boolean, person = "", withFace = false): string {
   const who = person.trim() || DEFAULT_PERSON;
   return [
     `Replace ${who} in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the`
     + " proportions of everything.",
+    withFace ? `<Picture ${withAnchor ? 3 : 2}> is a close-up of the same character's face.` : "",
     "Keep the reference character's face, hair and clothing.",
     "Preserve the scene and the audio timing.",
     withAnchor ? "Start from the first frame in <Picture 2>." : "",
@@ -83,9 +86,10 @@ export type Installed = {
   xolotl: string[];
 };
 
-/** Xólotl's nodes. The first four give the result back at the clip's size; the other two only save time. */
+/** Xólotl's nodes. The first four give the result back at the clip's size, the next two only save time, and the last
+ * gives H3 the character's face up close. */
 export const XOLOTL_NODES = ["XolotlFitVideo", "XolotlPersonBox", "XolotlMapMasks", "XolotlRestoreSize",
-  "XolotlGrowMasks", "XolotlReuseEncodes"] as const;
+  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlFaceCrop"] as const;
 
 /** Fastest first. The int8 files need ComfyUI on CUDA 13 (comfy-kitchen kernels); fp8 / fp16 run everywhere. */
 export const PREFERRED = {
@@ -113,6 +117,10 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   }
   const has = (name: string) => installed.xolotl.includes(name);
   if (graph.reuse && !has("XolotlReuseEncodes")) bypass(graph, "reuse", graph.reuse.inputs.vae);
+  if (graph.face && !has("XolotlFaceCrop")) {
+    delete graph.face; // the take runs on the full picture alone, and the prompt leaves the close-up out
+    delete graph["803"].inputs.segment_reference;
+  }
   if (graph["110"]?.class_type === "XolotlGrowMasks" && !has("XolotlGrowMasks")) {
     graph["110"].class_type = "H3CharacterSwapExpandMask"; // the pack's own, same inputs, slower
   }
@@ -145,7 +153,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     Object.assign(graph.veda.inputs, { generated_sparsity: sparsity, reference_sparsity: sparsity });
   }
   Object.assign(graph["801"].inputs, {
-    prompt: swapPrompt(request.direction, request.anchor !== undefined, request.person),
+    prompt: swapPrompt(request.direction, request.anchor !== undefined, request.person, graph.face !== undefined),
     seed: request.seed,
     steps: request.steps ?? DEFAULT_STEPS,
   });
