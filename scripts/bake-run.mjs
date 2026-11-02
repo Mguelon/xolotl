@@ -3,13 +3,18 @@
 //
 //   node scripts/bake-run.mjs --take <take-id-prefix> --label <label> [--set <node>.<field>=<value> ...]
 //        [--insert '{"id":"40","class_type":"X","on":["850",0],"input":"model","inputs":{...}}' ...]
-//        [--add '{"id":"face","class_type":"LoadImage","inputs":{"image":"face.png"}}' ...] [--dry] [--wait]
+//        [--add '{"id":"face","class_type":"LoadImage","inputs":{"image":"face.png"}}' ...] [--tap <node>[:slot] ...]
+//        [--dry] [--wait]
 //
 // --insert puts a new node on a wire: it reads `on` through `input`, and every node that read `on` reads the new
 // node instead. --add puts a node that reads nothing from the graph (a LoadImage, say); wire it in with --set
 // '803.segment_reference=["face",0]' (a value that starts with ", [ or { is read as JSON). --dry prints the edits and
 // the rewired consumers without queuing anything. Through a waker that lends the GPU (https), let Node trust the system CAs:
 // COMFYUI_URL=https://comfyui.local NODE_USE_SYSTEM_CA=1 node scripts/bake-run.mjs ...
+//
+// --tap keeps only what a node's output needs and saves that output as a 24 fps video (a MASK through MaskToImage):
+// the masks, the canvas or a crop of a take, looked at without running the swap. One video per tap, named
+// xolotl/bake_<label>_<node>.
 //
 // The SaveVideo prefix becomes xolotl/bake_<label>. Every run is appended to docs/demo/build/bake-off.json
 // ({ base, runs: [{ label, prompt_id, take, edits, queued_at, outcome?, seconds?, outputs? }] }).
@@ -30,6 +35,7 @@ const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1
 const sets = args.flatMap((a, i) => (a === "--set" ? [args[i + 1]] : []));
 const inserts = args.flatMap((a, i) => (a === "--insert" ? [args[i + 1]] : []));
 const adds = args.flatMap((a, i) => (a === "--add" ? [args[i + 1]] : []));
+const taps = args.flatMap((a, i) => (a === "--tap" ? [args[i + 1]] : []));
 const dry = args.includes("--dry");
 const take = opt("--take"), label = opt("--label"), wait = args.includes("--wait");
 if (!take || !label) { console.error("usage: bake-run.mjs --take <id-prefix> --label <label> [--set node.field=value ...] [--insert <json> ...] [--dry] [--wait]"); process.exit(2); }
@@ -79,6 +85,34 @@ for (const raw of inserts) {
 const save = Object.values(prompt).find((n) => n.class_type === "SaveVideo");
 if (!save) { console.error("the workflow has no SaveVideo node"); process.exit(2); }
 save.inputs.filename_prefix = `xolotl/bake_${label}`;
+if (taps.length) {
+  const keep = new Set();
+  const outputs = [];
+  for (const tap of taps) {
+    const [node, slot = "0"] = tap.split(":");
+    if (!prompt[node]) { console.error(`node ${node} is not in the workflow`); process.exit(2); }
+    const stack = [node];
+    while (stack.length) {
+      const id = stack.pop();
+      if (keep.has(id)) continue;
+      keep.add(id);
+      for (const v of Object.values(prompt[id].inputs)) if (Array.isArray(v) && typeof v[0] === "string" && prompt[v[0]]) stack.push(v[0]);
+    }
+    const kind = prompt[node].class_type;
+    const info = await (await fetch(`${COMFYUI}/object_info/${encodeURIComponent(kind)}`)).json();
+    const type = info[kind]?.output?.[Number(slot)];
+    if (type !== "MASK" && type !== "IMAGE") { console.error(`${node}:${slot} gives ${type}, not an IMAGE or MASK`); process.exit(2); }
+    outputs.push({ node, slot: Number(slot), type });
+  }
+  for (const id of Object.keys(prompt)) if (!keep.has(id)) delete prompt[id];
+  for (const { node, slot, type } of outputs) {
+    let images = [node, slot];
+    if (type === "MASK") { prompt[`tap_${node}_image`] = { class_type: "MaskToImage", inputs: { mask: images } }; images = [`tap_${node}_image`, 0]; }
+    prompt[`tap_${node}_video`] = { class_type: "CreateVideo", inputs: { images, fps: 24 } };
+    prompt[`tap_${node}_save`] = { class_type: "SaveVideo", inputs: { ...save.inputs, video: [`tap_${node}_video`, 0], filename_prefix: `xolotl/bake_${label}_${node}` } };
+    edits[`tap.${node}`] = `${slot} (${type})`;
+  }
+}
 if (dry) { console.log(JSON.stringify({ take: dir, label, edits }, null, 2)); process.exit(0); }
 
 const client_id = randomUUID();

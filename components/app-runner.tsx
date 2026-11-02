@@ -100,6 +100,7 @@ export function AppRunner() {
   const [size, setSize] = useState<SwapSize>("480p");
   const [direction, setDirection] = useState("");
   const [seed, setSeed] = useState("");
+  const [gestures, setGestures] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
@@ -214,7 +215,7 @@ export function AppRunner() {
     const form = new FormData();
     form.set("video", video); form.set("character", character);
     form.set("start", String(start)); form.set("seconds", String(seconds)); form.set("size", size);
-    form.set("direction", direction); form.set("seed", seed);
+    form.set("direction", direction); form.set("seed", seed); form.set("gestures", gestures ? "on" : "off");
     try {
       const response = await fetch("/api/jobs", { method: "POST", body: form });
       const next = await response.json() as Job & { error?: string };
@@ -348,6 +349,11 @@ export function AppRunner() {
             <label className="seed"><span>{t.seed}</span>
               <input inputMode="numeric" value={seed} disabled={busy} onChange={(event) => setSeed(event.target.value.replace(/\D/g, ""))} placeholder={t.seed_random} /></label>
           </div>
+          <label className="switch">
+            <input type="checkbox" role="switch" checked={gestures} disabled={busy} onChange={(event) => setGestures(event.target.checked)} />
+            <span className="switch-track" aria-hidden="true" />
+            <span className="switch-text"><b>{t.gestures}</b><small>{gestures ? t.gestures_on : t.gestures_off}</small></span>
+          </label>
           {(() => {
             const estimate = estimateMinutes(size, video ? seconds : 5);
             return estimate ? <p className="estimate">{t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1]))}</p> : null;

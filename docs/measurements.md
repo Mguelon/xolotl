@@ -167,6 +167,30 @@ With the face already big in the sheet the identity was there, and the close-up 
 
 **The Rigless LoRA** ([StephenShumway/rigless-lora](https://huggingface.co/StephenShumway/rigless-lora), a fine-tune of Akatz's v1.5 on real footage, MiniMax H3 Community License) in place of v1.5, everything else as `renata48-recorte`: like the character **0.36**, like the clip **0.39**, closer to the clip in 60 % of the frames, mouth +0.64, 5 min 11 s. Her face narrows and takes the performer's lips; with v1.5 it keeps her freckles, brows and round face. Its authors find it no better at face identity and better at keeping a dancer's back to the camera; Rigless runs it beside an 8-step turbo LoRA, and Xólotl runs the 4-step one. Xólotl keeps v1.5.
 
+### The mannequin (2026-11-02)
+
+The whole 13 s with the close-up, through the app (59b8ef94, 17 min 12 s): like the character **0.43**, like the clip 0.29, closer to the clip in 27 % of the 26 sampled frames, mouth +0.66 (spread 0.051). Frame by frame (`PER_FRAME=1 scripts/identity-follow.py`) the character holds from 0 to 3.0 s and from 7.0 s on, and between 3.5 and 6.5 s, the dancer's turn, the take shows the performer's face (0.60 like the clip at 4.0 s), her dark wine hair and her cropped top with the belly showing, in the character's yellow; the wine hair comes back on the character's head at 8-9.5 s. The masks were not the cause: tapped out of the graph (`scripts/bake-run.mjs --tap 107a --tap 110`), SAM's mask and the grown one cover her head, hair and belly in every frame. H3 regenerated them and copied the performer's looks from the clip it follows for the motion.
+
+D3voz's OPENjutsu hides those looks from H3: the person in the motion reference becomes a grey figure, the shading kept and blurred, the colours gone (`H3GreyMannequins`, MIT). Xólotl's `XolotlMannequin` does the same with their numbers (grey = 0.45 + 0.45 × luma, the body's luma blurred with sigma 8 px on the canvas, the face's green channel with 5 % of the face's height), only in the reference H3 reads: the result is still laid over the clip's own frames. Same seed and settings, the whole 13 s:
+
+| 13 s | Like the character | Like the clip | Frames closer to the clip | Mouth | ComfyUI |
+|---|---|---|---|---|---|
+| close-up | 0.43 | 0.29 | 27 % | **+0.66** | 17 min 11 s |
+| close-up + mannequin | **0.65** | **0.07** | **0 %** | +0.38 | 17 min 56 s |
+
+With the mannequin the character holds all the way: her auburn hair, her freckles and her sweater tucked into her jeans through the turn. Her face also stays calm: no pout where the performer pouts. On the first 4.8 s, the face's treatment against the gestures:
+
+| 4.8 s | Like the character | Like the clip | Mouth |
+|---|---|---|---|
+| close-up, no mannequin (`renata48-recorte`) | 0.53 | 0.15 | **+0.60** |
+| mannequin, the face grey and sharp (`face_blur` 0) | 0.58 | 0.11 | +0.42 |
+| mannequin, the lips darkened by their red (×1) | **0.61** | 0.12 | +0.40 |
+| mannequin, the face left in colour | 0.40 | 0.25 | +0.53 |
+
+A grey face, sharp or with the mouth drawn dark, doesn't bring the pout back; a face left in colour brings part of it back and the performer's face with it. Mike's choice (2026-11-02): the mannequin by default, and a **Copy gestures** switch that turns it off.
+
+The first version took 46 s for the 13 s on the CPU, one frame after another (YuNet keeps state per call). Blurring the body at half size, looking for faces at half size, painting only the person's box and the faces' detail only around each face, with one YuNet per thread writing straight into the result: 4.3 s with 16 threads (5.5 s with 8), the same frames within 0.07/255 on average (99.9th percentile 2.3/255).
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.

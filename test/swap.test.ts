@@ -85,6 +85,9 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.deepEqual(noGrow["110"].inputs, template["110"].inputs);
   assert.equal(noGrow.restore.class_type, "XolotlRestoreSize", "the rest of Xólotl's path stays");
   assert.equal(fit(without("XolotlMapMasks")).restore, undefined, "a missing core node: the pack's own path");
+  const noMannequin = fit(without("XolotlMannequin"));
+  assert.equal(noMannequin.mannequin, undefined);
+  assert.deepEqual(noMannequin["803"].inputs.source, ["31", 0], "H3 reads the clip as it is");
   const noFace = fit(without("XolotlFaceCrop"));
   assert.equal(noFace.face, undefined);
   assert.equal(noFace["803"].inputs.segment_reference, undefined, "the full picture alone");
@@ -94,6 +97,7 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.equal(bare.fit, undefined);
   assert.equal(bare.restore, undefined);
   assert.equal(bare.face, undefined);
+  assert.equal(bare.mannequin, undefined, "without Xólotl's nodes there is no mannequin either");
   assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
   assert.deepEqual(bare["809"].inputs.video, ["808", 0], "and the result is saved at its canvas size");
   for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "107a", "box", "map"]) assert.equal(bare[id], undefined, `${id} goes too`);
@@ -165,6 +169,23 @@ test("gives H3 a close-up of the character's face, cut from the uploaded picture
   assert.match(anchored, /Start from the first frame in <Picture 2>\./);
 });
 
+test("shows H3 the person as a grey mannequin unless the gestures are asked for", () => {
+  const graph = swapWorkflow(template, request);
+  assert.equal(graph.mannequin.class_type, "XolotlMannequin");
+  assert.deepEqual(graph.mannequin.inputs.images, ["31", 0]);
+  assert.deepEqual(graph.mannequin.inputs.masks, ["map", 0], "the person's own silhouette, not the grown mask");
+  assert.deepEqual(graph["803"].inputs.source, ["mannequin", 0]);
+  const gestures = swapWorkflow(template, { ...request, gestures: true });
+  assert.equal(gestures.mannequin, undefined);
+  assert.deepEqual(gestures["803"].inputs.source, ["31", 0]);
+  assert.ok(template.mannequin, "the template stays untouched");
+  const partial = fitToInstalled(structuredClone(template), {
+    diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae], vedaPredictors: [], vedaNode: false,
+    xolotl: ["XolotlMannequin", "XolotlFaceCrop", "XolotlGrowMasks"],
+  });
+  assert.deepEqual(partial.mannequin.inputs.masks, ["107", 0], "without the first pass it follows the pack's tracking");
+});
+
 test("drops the first-frame nodes when there is none", () => {
   const graph = swapWorkflow(template, request);
   assert.equal(graph.anchor_image, undefined);
@@ -199,8 +220,10 @@ test("reads and checks the settings", () => {
     return data;
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
-    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true,
+    start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true, gestures: false,
   });
+  assert.equal(readSettings(form({ seconds: "5", size: "480p", gestures: "on" })).gestures, true);
+  assert.throws(() => readSettings(form({ seconds: "5", size: "480p", gestures: "maybe" })), /gestures must be/);
   assert.equal(readSettings(form({ seconds: "5", size: "480p", person: "  the man in red  " })).person, "the man in red");
   assert.ok(Number.isInteger(readSettings(form({ seconds: "5", size: "768p" })).seed));
   assert.deepEqual(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).steps, 20);

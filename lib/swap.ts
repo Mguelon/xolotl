@@ -36,6 +36,9 @@ export type SwapRequest = {
   steps?: number;
   /** false drops the turbo LoRA: full sampling, as in H3's official template (20 steps). */
   turbo?: boolean;
+  /** true shows H3 the person as they are instead of a grey mannequin: it copies the gestures (a pout, a kiss), and at
+   * moments the person's hair, clothes or face slip into the character (docs/measurements.md, "The mannequin"). */
+  gestures?: boolean;
 };
 
 export const DEFAULT_PERSON = "the person";
@@ -87,9 +90,16 @@ export type Installed = {
 };
 
 /** Xólotl's nodes. The first four give the result back at the clip's size, the next two only save time, and the last
- * gives H3 the character's face up close. */
+ * two keep the character's looks: its face up close, and the clip's person as a grey mannequin. */
 export const XOLOTL_NODES = ["XolotlFitVideo", "XolotlPersonBox", "XolotlMapMasks", "XolotlRestoreSize",
-  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlFaceCrop"] as const;
+  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlFaceCrop", "XolotlMannequin"] as const;
+
+/** H3 reads the clip as it is: the pack's source straight from PrepareVideo. */
+function dropMannequin(graph: Graph) {
+  if (!graph.mannequin) return;
+  graph["803"].inputs.source = graph.mannequin.inputs.images;
+  delete graph.mannequin;
+}
 
 /** Fastest first. The int8 files need ComfyUI on CUDA 13 (comfy-kitchen kernels); fp8 / fp16 run everywhere. */
 export const PREFERRED = {
@@ -117,6 +127,7 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   }
   const has = (name: string) => installed.xolotl.includes(name);
   if (graph.reuse && !has("XolotlReuseEncodes")) bypass(graph, "reuse", graph.reuse.inputs.vae);
+  if (!has("XolotlMannequin")) dropMannequin(graph);
   if (graph.face && !has("XolotlFaceCrop")) {
     delete graph.face; // the take runs on the full picture alone, and the prompt leaves the close-up out
     delete graph["803"].inputs.segment_reference;
@@ -128,6 +139,7 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
     bypass(graph, "restore", ["808", 0]);
     bypass(graph, "fit", graph.fit.inputs.video);
     graph["110"].inputs.masks = ["107", 0]; // the pack tracks the person on its own canvas
+    if (graph.mannequin) graph.mannequin.inputs.masks = ["107", 0];
     for (const id of FIRST_PASS) delete graph[id];
   }
   return graph;
@@ -161,6 +173,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     bypass(graph, "4");
     Object.assign(graph["801"].inputs, FULL_SAMPLING);
   }
+  if (request.gestures) dropMannequin(graph);
   if (request.anchor !== undefined) {
     graph.anchor_image.inputs.image = request.anchor;
   } else {
@@ -181,6 +194,7 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   const person = form.get("person");
   const stepsText = String(form.get("steps") ?? "").trim();
   const turboText = String(form.get("turbo") ?? "").trim().toLowerCase();
+  const gesturesText = String(form.get("gestures") ?? "").trim().toLowerCase();
   if (!Number.isFinite(start) || start < 0) throw new Error("Choose where the part starts.");
   if (!Number.isFinite(seconds) || seconds < MIN_SECONDS || seconds > MAX_SECONDS) {
     throw new Error(`Choose a part between ${MIN_SECONDS} and ${MAX_SECONDS} seconds long.`);
@@ -192,9 +206,12 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   if (!Number.isInteger(steps) || steps < 1 || steps > MAX_STEPS) throw new Error(`Steps must be a whole number from 1 to ${MAX_STEPS}.`);
   if (turboText && !["on", "off", "true", "false", "1", "0"].includes(turboText)) throw new Error("turbo must be on or off.");
   const turbo = !["off", "false", "0"].includes(turboText);
+  if (gesturesText && !["on", "off", "true", "false", "1", "0"].includes(gesturesText)) throw new Error("gestures must be on or off.");
+  const gestures = ["on", "true", "1"].includes(gesturesText);
   return {
     steps,
     turbo,
+    gestures,
     start: Math.round(start * 100) / 100,
     seconds: Math.round(seconds * 100) / 100,
     size: size as SwapSize,

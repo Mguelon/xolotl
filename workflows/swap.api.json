@@ -361,7 +361,7 @@
         0
       ],
       "source": [
-        "31",
+        "mannequin",
         0
       ],
       "source_audio": [
@@ -798,6 +798,24 @@
     },
     "_meta": {
       "title": "Xólotl · Character Face Close-up"
+    }
+  },
+  "mannequin": {
+    "class_type": "XolotlMannequin",
+    "inputs": {
+      "images": [
+        "31",
+        0
+      ],
+      "masks": [
+        "map",
+        0
+      ],
+      "faces": true,
+      "face_blur": 0.05
+    },
+    "_meta": {
+      "title": "Xólotl · Grey Mannequin for the Motion"
     }
   }
 }

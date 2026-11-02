@@ -1,8 +1,10 @@
 """Whose face a take shows: every 12th frame, the cosine similarity of the take's face (insightface buffalo_l, the
 largest face) to the character's reference and to the clip's face in the same frame. A swap that worked is close to the
-character and far from the clip. Prints the medians and, per take, the share of frames closer to the clip.
+character and far from the clip. Prints the medians and, per take, the share of frames closer to the clip; PER_FRAME=1 also prints each sampled frame
+(its number, seconds, and both similarities), to see where a take loses the character.
   python3 scripts/identity-follow.py <insightface root> clip.mp4 take1.mp4=character1.png [take2.mp4=character2.png ...]
 (insightface with buffalo_l under <root>/models, OpenCV, numpy, ffmpeg)"""
+import os
 import subprocess
 import sys
 
@@ -39,11 +41,14 @@ for pair in pairs:
     if ref is None:
         print(f"{take}: no face in {character}"); continue
     to_char, to_clip = [], []
-    for f, c in zip(frames(take), clip_faces):
+    for i, (f, c) in enumerate(zip(frames(take), clip_faces)):
         e = embedding(app, f)
         if e is None or c is None:
             continue
         to_char.append(float(e @ ref)); to_clip.append(float(e @ c))
+        if os.environ.get("PER_FRAME"):
+            print(f"  frame {i * EVERY:4d} ({i * EVERY / 24:5.2f} s): like the character {to_char[-1]:.2f}, "
+                  f"like the clip {to_clip[-1]:.2f}{'  <- the clip' if to_clip[-1] > to_char[-1] else ''}")
     a, b = np.array(to_char), np.array(to_clip)
     print(f"{take.rsplit('/', 1)[-1]}: like the character {np.median(a):.2f}, like the clip {np.median(b):.2f}, "
           f"closer to the clip in {np.mean(b > a):.0%} of {len(a)} frames")

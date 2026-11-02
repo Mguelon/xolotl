@@ -8,6 +8,7 @@ clip's own frames, at the clip's own size and place, through the region the swap
 stays the original footage until the final encode. XolotlGrowMasks grows the person's mask as the pack's Expand
 Person Mask does, in a fraction of the time, and XolotlReuseEncodes keeps the pack from encoding the same frames twice.
 XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
+XolotlMannequin turns the clip's person grey in the reference H3 copies the motion from, so it does not copy their looks.
 
 Both nodes cut and decode the original file with the same ffmpeg options, so they see the same frames, and neither
 goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in the pack, so a long
@@ -30,6 +31,7 @@ import torch.nn.functional as F
 from comfy_api.latest._input_impl.video_types import VideoFromFile
 
 from .geometry import PIXEL_BUDGETS, face_square, fit_canvas, person_box
+from .mannequin import mannequins
 from .masks import grow as grow_masks
 from .reuse import reusing_encodes
 
@@ -420,14 +422,47 @@ class XolotlFaceCrop:
         return (torch.from_numpy(close_up).float().div(255).unsqueeze(0),)
 
 
+class XolotlMannequin:
+    """The person in H3's motion reference turned into a grey figure (mannequin.py, after D3voz's H3GreyMannequins,
+    MIT): H3 follows the clip's motion without copying the performer's looks. With only the colours and the face of
+    the clip to go on, the 13 s take drew the performer's cropped top, belly, hair and face for three seconds of a
+    turn (docs/measurements.md). The face keeps finer detail (YuNet finds it) so the expressions still lead.
+    Only the reference H3 reads changes: the result is laid over the clip's own frames.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"images": ("IMAGE",), "masks": ("MASK",),
+                             "faces": ("BOOLEAN", {"default": True,
+                                                   "tooltip": "Keep finer detail on the faces, for the expressions."}),
+                             "face_blur": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 0.5, "step": 0.005,
+                                                     "tooltip": "The faces' blur, as a share of the face's height "
+                                                                "(0: as sharp as the clip)."})}}
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("motion_reference",)
+    FUNCTION = "paint"
+    CATEGORY = "Xólotl"
+
+    def paint(self, images, masks, faces, face_blur=0.05):
+        frames = images[..., :3].float().cpu().numpy()
+        people = masks.float().cpu().numpy()
+        if people.shape[1:] != frames.shape[1:3]:
+            raise ValueError("Masks and frames differ in size.")
+        if len(people) < len(frames):  # the padded tail repeats the last frame, and so does its mask
+            people = np.concatenate([people, np.repeat(people[-1:], len(frames) - len(people), axis=0)])
+        return (torch.from_numpy(mannequins(frames, people[:len(frames)], str(YUNET) if faces else None, face_blur)),)
+
+
 NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": XolotlPersonBox,
                        "XolotlMapMasks": XolotlMapMasks, "XolotlRestoreSize": XolotlRestoreSize,
                        "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
-                       "XolotlFaceCrop": XolotlFaceCrop}
+                       "XolotlFaceCrop": XolotlFaceCrop, "XolotlMannequin": XolotlMannequin}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
                               "XolotlRestoreSize": "Xólotl · Restore Clip Size",
                               "XolotlGrowMasks": "Xólotl · Grow the Person's Mask",
                               "XolotlReuseEncodes": "Xólotl · Reuse VAE Encodes",
-                              "XolotlFaceCrop": "Xólotl · Character Face Close-up"}
+                              "XolotlFaceCrop": "Xólotl · Character Face Close-up",
+                              "XolotlMannequin": "Xólotl · Grey Mannequin for the Motion"}
