@@ -39,6 +39,10 @@ export type SwapRequest = {
   /** true adds LivePortrait's pass, an experiment off by default: it gives the mannequin's calm face the clip's pouts and
    * winks, and smears the hands near the face and turns the head twice (docs/measurements.md, "The gestures back"). */
   gestures?: boolean;
+  /** true shows H3 the clip's person as a grey mannequin, an option off by default: it keeps the performer's looks out,
+   * and with them her gestures; the character described in `direction` keeps her looks out and the gestures in
+   * (docs/measurements.md, "The character described"). */
+  mannequin?: boolean;
 };
 
 export const DEFAULT_PERSON = "the person";
@@ -191,6 +195,7 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     Object.assign(graph["801"].inputs, FULL_SAMPLING);
   }
   if (!request.gestures) dropGestures(graph);
+  if (!request.mannequin) dropMannequin(graph);
   if (request.anchor !== undefined) {
     graph.anchor_image.inputs.image = request.anchor;
   } else {
@@ -212,6 +217,7 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   const stepsText = String(form.get("steps") ?? "").trim();
   const turboText = String(form.get("turbo") ?? "").trim().toLowerCase();
   const gesturesText = String(form.get("gestures") ?? "").trim().toLowerCase();
+  const mannequinText = String(form.get("mannequin") ?? "").trim().toLowerCase();
   if (!Number.isFinite(start) || start < 0) throw new Error("Choose where the part starts.");
   if (!Number.isFinite(seconds) || seconds < MIN_SECONDS || seconds > MAX_SECONDS) {
     throw new Error(`Choose a part between ${MIN_SECONDS} and ${MAX_SECONDS} seconds long.`);
@@ -225,10 +231,13 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   const turbo = !["off", "false", "0"].includes(turboText);
   if (gesturesText && !["on", "off", "true", "false", "1", "0"].includes(gesturesText)) throw new Error("gestures must be on or off.");
   const gestures = ["on", "true", "1"].includes(gesturesText);
+  if (mannequinText && !["on", "off", "true", "false", "1", "0"].includes(mannequinText)) throw new Error("mannequin must be on or off.");
+  const mannequin = ["on", "true", "1"].includes(mannequinText);
   return {
     steps,
     turbo,
     gestures,
+    mannequin,
     start: Math.round(start * 100) / 100,
     seconds: Math.round(seconds * 100) / 100,
     size: size as SwapSize,

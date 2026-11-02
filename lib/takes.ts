@@ -12,6 +12,7 @@ export type TakeSettings = {
   steps?: number;
   turbo?: boolean;
   gestures?: boolean;
+  mannequin?: boolean;
   person?: string;
 };
 export type TakeMeta = {

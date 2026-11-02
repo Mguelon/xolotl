@@ -189,7 +189,7 @@ With the mannequin the character holds all the way: her auburn hair, her freckle
 | mannequin, the lips darkened by their red (×1) | **0.61** | 0.12 | +0.40 |
 | mannequin, the face left in colour | 0.40 | 0.25 | +0.53 |
 
-A grey face, sharp or with the mouth drawn dark, doesn't bring the pout back; a face left in colour brings part of it back and the performer's face with it. Mike's choice (2026-11-02): the mannequin by default, and a **Copy gestures** switch that turns it off.
+A grey face, sharp or with the mouth drawn dark, doesn't bring the pout back; a face left in colour brings part of it back and the performer's face with it. Mike's choice (2026-11-02): the mannequin by default, and a **Copy gestures** switch that turns it off; since the character described (below), it is off by default.
 
 The first version took 46 s for the 13 s on the CPU, one frame after another (YuNet keeps state per call). Blurring the body at half size, looking for faces at half size, painting only the person's box and the faces' detail only around each face, with one YuNet per thread writing straight into the result: 4.3 s with 16 threads (5.5 s with 8), the same frames within 0.07/255 on average (99.9th percentile 2.3/255).
 
@@ -211,6 +211,24 @@ Relative motion copies each frame's expression as a change from one frame of the
 In the template the pass runs on the canvas, between the pack's assembled frames and *Restore Clip Size*, so the clip's frames on the same canvas drive it frame for frame and the swap is encoded once. The whole 13 s through the app (331ce285): **20 min 12 s** against 17 min 21 s without it, like the character 0.57, like the clip 0.07, closer to the clip in 0 % of the frames, mouth +0.12; the open-mouthed pout at 1.7 s, the narrowed eyes at 9.6 s and the wink at 12.2 s come through, the pout at 0.5 s softer than on the full-size video, and the tilted kiss at 11.8 s not.
 
 And it costs more than it gives back. Frame by frame against the mannequin's take (`renata-pruebas/manos-cabeza.jpg`: the clip, no mannequin, the mannequin, the mannequin and LivePortrait), the hands that come near the face are smeared at 2.8, 3.0 and 7.1 s, and at 6.7 and 11.9 s the head tips back with the chin up: LivePortrait warps the whole square around the face, the hand in it included, and its relative motion applies the clip's head turns to a swap that already follows them, so the head turns twice. Mike (2026-11-02): «vamos para atrás, se le borran las manos, la cabeza pierde las proporciones», as he had put it before, «es preferible que no haga gestos a que los haga feos». The pass stays in the template as an experiment, off unless asked for (`gestures=on`), and the interface does not offer it.
+
+### The character described (2026-11-02)
+
+Both ways that keep the performer's looks out of the mannequin's take, measured on the same 13 s, seed and settings:
+
+| 13 s | Like the character | Like the clip | Frames closer to the clip | Mouth | The turn | ComfyUI |
+|---|---|---|---|---|---|---|
+| the full-body picture alone, no close-up (036d14b7) | 0.02 | 0.81 | 100 % | +0.73, the performer's own | the performer's cropped top in beige | 17 min 8 s |
+| close-up (59b8ef94) | 0.43 | 0.29 | 27 % | +0.66 | cropped top, the belly showing | 17 min 12 s |
+| close-up + mannequin (7fd9d6f5) | **0.67** | **0.08** | **0 %** | +0.14 | sweater down | 17 min 21 s |
+| close-up + mannequin, the head kept in colour | 0.00 | 0.87 | 100 % | +0.79, the performer's own | the performer's white top and belly | 17 min 26 s |
+| **close-up + the character described** | 0.56 | 0.13 | **0 %** | **+0.63** | **sweater down** | 13 min 48 s, SAM's track cached |
+
+The head kept in colour over a grey body (the grey starting 0.15 face heights under the chin) gives the performer back whole: her face, her white turtleneck and her belly, only the sleeves in the character's yellow. The grey keeps the clothes' light and shade, and the white collar in colour is enough for H3 to fill in the rest.
+
+The described take adds one sentence to Mike's prompt, what the character looks like and nothing about the gestures: *The character is a young woman with long wavy auburn hair, green eyes, thick dark eyebrows and freckles, wearing a mustard-yellow crew-neck knit sweater that reaches the waistband of her light-blue high-waisted jeans, and white sneakers.* No frame shows the performer, the sweater stays down through the turn, and the mouth follows the clip as without the mannequin: the open mouth at 4 s, the smiles, the hand to the mouth at 6.5 s; the kiss at 12 s and the wink at 12.3 s do not come through, and no hand is made up at the end, where the mannequin's take drew one at 12.3-13 s. Its ComfyUI time is lower because SAM's track and the frames before it were cached from the run before (the same clip file); through the app every take tracks afresh. Mike (2026-11-02): «esta es la mejor de todas, es la que vamos a usar». The mannequin stays as an option, off by default (`mannequin=on`).
+
+An earlier take had already pointed this way: Amara's 13 s take (cd7f6ce1, 2026-11-01) described her in the direction, gestures included, and shows her face; its hand blowing kisses, where the performer has none, came from *blows kisses* in that direction (above, "Facial expressions").
 
 ## 768p with the default recipe
 

@@ -175,13 +175,20 @@ test("gives H3 a close-up of the character's face, cut from the uploaded picture
   assert.match(anchored, /Start from the first frame in <Picture 2>\./);
 });
 
-test("shows H3 the person as a grey mannequin", () => {
-  const graph = swapWorkflow(template, request);
+test("H3 reads the clip as it is by default, and the description keeps the performer's looks out", () => {
+  const graph = swapWorkflow(template, { ...request, direction: "The character is a young woman with long wavy auburn hair." });
+  assert.equal(graph.mannequin, undefined);
+  assert.deepEqual(graph["803"].inputs.source, ["31", 0]);
+  assert.match(String(graph["801"].inputs.prompt), /audio timing\. The character is a young woman with long wavy auburn hair\.$/);
+});
+
+test("shows H3 the person as a grey mannequin when asked", () => {
+  const graph = swapWorkflow(template, { ...request, mannequin: true });
   assert.equal(graph.mannequin.class_type, "XolotlMannequin");
   assert.deepEqual(graph.mannequin.inputs.images, ["31", 0]);
   assert.deepEqual(graph.mannequin.inputs.masks, ["map", 0], "the person's own silhouette, not the grown mask");
   assert.deepEqual(graph["803"].inputs.source, ["mannequin", 0]);
-  assert.ok(swapWorkflow(template, { ...request, gestures: false }).mannequin, "with or without the gestures");
+  assert.ok(swapWorkflow(template, { ...request, mannequin: true, gestures: false }).mannequin, "with or without the gestures");
   const partial = fitToInstalled(structuredClone(template), {
     diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae], vedaPredictors: [], vedaNode: false,
     xolotl: ["XolotlMannequin", "XolotlFaceCrop", "XolotlGrowMasks"], livePortrait: false,
@@ -240,9 +247,13 @@ test("reads and checks the settings", () => {
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
     start: 1.23, seconds: 5, size: "480p", seed: 7, direction: "x", person: "", steps: 4, turbo: true, gestures: false,
+    mannequin: false,
   });
   assert.equal(readSettings(form({ seconds: "5", size: "480p", gestures: "on" })).gestures, true);
   assert.throws(() => readSettings(form({ seconds: "5", size: "480p", gestures: "maybe" })), /gestures must be/);
+  assert.equal(readSettings(form({ seconds: "5", size: "480p" })).mannequin, false, "the mannequin is off by default");
+  assert.equal(readSettings(form({ seconds: "5", size: "480p", mannequin: "on" })).mannequin, true);
+  assert.throws(() => readSettings(form({ seconds: "5", size: "480p", mannequin: "maybe" })), /mannequin must be/);
   assert.equal(readSettings(form({ seconds: "5", size: "480p", person: "  the man in red  " })).person, "the man in red");
   assert.ok(Number.isInteger(readSettings(form({ seconds: "5", size: "768p" })).seed));
   assert.deepEqual(readSettings(form({ seconds: "5", size: "480p", steps: "20", turbo: "off" })).steps, 20);
