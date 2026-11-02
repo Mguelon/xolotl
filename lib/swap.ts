@@ -42,16 +42,16 @@ export const DEFAULT_PERSON = "the person";
 
 /**
  * H3's labels are the order of its references: the character image is <Picture 1> and the clip <Video 1> (the pack
- * passes them that way; comfy/text_encoders/minimax.py). The person to replace is named, and what to keep is named one
- * by one. The body, the hands and the head follow the clip; the face's gestures did not, at 480p or at 768p, whatever
- * the list named, and a gesture written in the direction shows at its own moments rather than the clip's
- * (docs/measurements.md, "Facial expressions").
+ * passes them that way; comfy/text_encoders/minimax.py). What to keep is only what Mike asked for (2026-11-02: «solo
+ * decirle que conserve los gestos y las poses y las proporciones de todo»), nothing written about the gestures
+ * themselves: «blows kisses» in the direction put a hand to the mouth where the clip has none (Denim and Inés, the same
+ * frames; docs/measurements.md, "Facial expressions").
  */
 export function swapPrompt(direction: string, withAnchor: boolean, person = ""): string {
   const who = person.trim() || DEFAULT_PERSON;
   return [
-    `Replace ${who} in <Video 1> with the character in <Picture 1>, keeping that person's position, scale, pose, movements,`
-    + " gaze, blinking, facial expressions and visible mouth movements moment by moment.",
+    `Replace ${who} in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the`
+    + " proportions of everything.",
     "Keep the reference character's face, hair and clothing.",
     "Preserve the scene and the audio timing.",
     withAnchor ? "Start from the first frame in <Picture 2>." : "",

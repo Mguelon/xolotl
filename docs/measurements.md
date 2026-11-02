@@ -118,6 +118,19 @@ A rough measure (a head turn also narrows the mouth on screen, and the head foll
 
 What the sources say (2026-11-01): the official API guide (Runware) recommends a tight close-up as the performance reference, since "a clean close-up reads more accurately than a wide shot when the model is copying the expression"; Mickmumpitz's *Performance Capture* workflow does that with a DWPose face crop on grey as a second reference video; BFS's own character-swap LoRA (v1.1, guide-latent conditioning, custom licence) asks for "lip movement and facial expression, frame by frame" in its prompt. Those are the next things to try if a clip's gestures still get lost.
 
+### The whole 13 s, and what a written gesture costs (2026-11-02)
+
+The same clip, all 13 s at 480p (512×928 canvas, three windows), seed 4048927270, the person named and the list of what to keep, plus *She purses her lips and blows kisses to the camera.* in the direction. Mouth measured over all 310 frames (`FRAMES=312 scripts/mouth-follow.py`; the clip: 0.66-0.92, spread 0.047):
+
+| Take | Reference | ComfyUI | Correlation | Spread |
+|---|---|---|---|---|
+| *Denim* (abd89408) | one full-body image | 20 min 51 s | **+0.55** | 0.051 |
+| *Inés* (aae09e52) | atelier's simple sheet (front without the head, back, big face) | 17 min 04 s | +0.45 | 0.062 |
+
+The lips purse at the clip's frames, but both takes put a hand to the mouth, blowing a kiss, where the performer has none (frames 194 and 280-296: the same seed and the same line, the same invented hand); a hand with no hand in the clip to follow comes out softer and odder than the rest. *Inés* moves the mouth a third more than the clip (spread 0.062 against 0.047), and when she smiles at the end her cheeks fold into deep creases: her reference only shows her face at rest. The faces are small for the model: the eyes are 82-84 px apart in the 720×1280 result (median; 60 in the farthest tenth), 59 px (43) on the 512×928 canvas, and H3's VAE divides each side by 16 (608×800 → 38×50 in the log), so an eye spans one or two latent cells and a finger less than one.
+
+Mike, after watching both (2026-11-02): «es preferible que no haga gestos a que los haga feos». The prompt now only asks to keep the gestures, the poses and the proportions of everything, and nothing is written about the gestures themselves.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.

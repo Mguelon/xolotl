@@ -160,8 +160,8 @@ test("drops the first-frame nodes when there is none", () => {
 test("names the person to replace and what to keep, then the direction", () => {
   assert.equal(
     swapPrompt("  keep the glasses  ", false, " the woman with long brown hair "),
-    "Replace the woman with long brown hair in <Video 1> with the character in <Picture 1>, keeping that person's position, "
-    + "scale, pose, movements, gaze, blinking, facial expressions and visible mouth movements moment by moment. "
+    "Replace the woman with long brown hair in <Video 1> with the character in <Picture 1>, keeping that person's gestures "
+    + "and poses and the proportions of everything. "
     + "Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. keep the glasses",
   );
   assert.match(swapPrompt("x", false), /^Replace the person in <Video 1>/, "no description: the person");
