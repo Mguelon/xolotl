@@ -94,6 +94,8 @@ The whole take again with the node (bb1ad98f: same clip, character, description 
 
 Why 164 frames come back empty: the tracking lost the person at frame 161, in the turn, and never found them again. With `max_objects` 1 the initial mask fills the only slot, and SAM 3.1's tracker runs no detection at all while every slot is taken (`comfy/ldm/sam3/tracker.py`, `run_det`), so a lost track stays lost and every frame after it goes to the per-frame search. Tracking again from the first lost frame would take about 0.18 s a frame instead of 0.6, about a minute less on this clip, but it would give tracked masks where the pack gives detected ones; not done.
 
+The 13 s take that took 12 min 38 s (cd7f6ce1, 2026-11-01, same clip and graph) did not track the person: its first window's encoding starts 1 s after ComfyUI got the prompt, because ComfyUI kept the tracking and the per-frame search from the two takes of the same clip cancelled just before it (8114409b, d02dd698). With that first pass, about 3.5 min, a full run of those 13 s was about 16 min from the start. Its steps against bb1ad98f's: 42.5 / 50.2 / 27.3 s against 45.6 / 53.4 / 29.3 s; the difference is the face close-up, one more reference for H3 (Veda: 2 spans then, 3 now).
+
 ## Facial expressions
 
 `generation.mp4` (720×1280, 24 fps, 13 s; a young woman dancing in a hallway, pursing her lips and blowing kisses to the camera), first 5 s at 480p, the *Amara* character and seed 4048927270, through the app. The person fills 95 % of the frame, so the crop is nearly the whole frame (512×928 canvas, 13 630 of 18 560 tokens regenerated). Same everything else in every row:
