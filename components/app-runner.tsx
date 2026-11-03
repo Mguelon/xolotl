@@ -6,6 +6,7 @@ import { EXAMPLES, type Example } from "../lib/examples";
 import { counted } from "../lib/i18n";
 import { useLang } from "../lib/use-lang";
 import type { CharacterMeta } from "../lib/characters";
+import { characterIdentity } from "../lib/character";
 import { jobErrorMessage } from "../lib/job-error";
 import { CHARACTER_TAG, DEFAULT_STEPS, MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
 import { estimateMinutes } from "../lib/estimates";
@@ -173,18 +174,19 @@ export function AppRunner() {
     } catch { setError(true); setMessage(t.err_video); }
   }
 
-  function chooseCharacter(file: File | undefined, describe = true) {
+  function chooseCharacter(file: File | undefined, describe = true, what?: string | null) {
     setCharacter(file ?? null); setJob(null); setSelected(null);
     describedFor.current = file ?? null;
-    if (file && describe) void describeCharacter(file);
+    if (file && describe) void describeCharacter(file, what);
   }
 
   /** ComfyUI writes what the character looks like as soon as the picture is chosen; the user can change the words. */
-  async function describeCharacter(file: File) {
+  async function describeCharacter(file: File, what?: string | null) {
     setDescription(""); setDescribing(true); setError(false); setMessage("");
     try {
       const form = new FormData();
       form.set("character", file);
+      if (what) form.set("what", what);
       const response = await fetch("/api/describe", { method: "POST", body: form });
       const body = await response.json() as { description?: string; error?: string };
       if (describedFor.current !== file) return;
@@ -214,7 +216,8 @@ export function AppRunner() {
         if (!version) throw new Error(t.err_character);
         const extension = version.file.split(".").pop() ?? "png";
         const type = extension === "jpg" ? "image/jpeg" : extension === "webp" ? "image/webp" : "image/png";
-        chooseCharacter(await fetchFile(`/api/characters/${meta.id}/files/${version.file}`, `${meta.name || "character"}.${extension}`, type));
+        chooseCharacter(await fetchFile(`/api/characters/${meta.id}/files/${version.file}`, `${meta.name || "character"}.${extension}`, type),
+          true, meta.picks?.head ? characterIdentity(meta.picks.head) : null);
       } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : t.err_character); }
     })();
     // Once, on arrival: the strings are the language's and the setters never change.

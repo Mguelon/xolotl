@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { EXAMPLES } from "../lib/examples";
 import { useLang } from "../lib/use-lang";
 import { TopBar } from "./top-bar";
 import { Twin } from "./twin";
@@ -10,6 +9,12 @@ import { Twin } from "./twin";
 /** A real take, the bundled terrace clip with Amara (data/takes/a2cb4adf, 768p, 4 steps): the swap door's showcase.
  *  Its divider starts across her face (31 % from the left), so the swap shows before anyone touches it. */
 const SHOWCASE = { original: "/examples/terrace.mp4", swap: "/examples/terrace-amara.mp4" };
+
+/** The create door's own work: a head and the body made around it in the creator (FLUX.2 [klein] 4B, 2026-11-03). */
+const CREATED = [
+  { src: "/examples/creator-head.jpg", label: "door_create_head" },
+  { src: "/examples/creator-body.jpg", label: "door_create_body_label" },
+] as const;
 
 /** The way in: the two tools, each shown with its own real work. */
 export function Landing() {
@@ -50,15 +55,15 @@ export function Landing() {
 
           <article className="door create">
             <div className="door-media cast">
-              {EXAMPLES.map((example) => (
-                <figure key={example.id}>
-                  <img src={example.characterPoster} alt={example.name} />
-                  <figcaption>{example.name}</figcaption>
+              {CREATED.map((made) => (
+                <figure key={made.src}>
+                  <img src={made.src} alt={t[made.label]} />
+                  <figcaption>{t[made.label]}</figcaption>
                 </figure>
               ))}
             </div>
             <div className="door-text">
-              <p className="door-kicker">{t.door_create_kicker}<span className="soon">{t.door_create_tag}</span></p>
+              <p className="door-kicker">{t.door_create_kicker}</p>
               <h2><Link href="/create">{t.door_create_title}</Link></h2>
               <p>{t.door_create_body}</p>
               <div className="door-foot">

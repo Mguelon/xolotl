@@ -302,7 +302,6 @@ export const GROUPS: Record<Step, Group[]> = {
   sheet: [
     { id: "kind", kind: "one", en: "Sheet", es: "Hoja", required: true, initial: "simple", choices: [
       { id: "simple", en: "Simple", es: "Simple", say: "" },
-      { id: "full", en: "Full", es: "Completa", say: "" },
     ] },
     { id: "name", kind: "text", line: true, en: "Name", es: "Nombre", placeholder: { en: "e.g. Inés", es: "ej.: Inés" } },
   ],
@@ -311,14 +310,13 @@ export const GROUPS: Record<Step, Group[]> = {
 /** What each sheet holds, under its button. */
 export const SHEET_KINDS: Record<string, Words> = {
   simple: { en: "The front, the back and the face, in one picture: what the swap casts from.", es: "El frente, la espalda y la cara, en una imagen: con eso el cambio pone a tu personaje." },
-  full: { en: "Five views on one floor line, the head at three angles, expressions and the palette.", es: "Cinco vistas sobre una línea de piso, la cabeza en tres ángulos, expresiones y la paleta." },
 };
 
 /** What each step takes on the A4000. The head and the body: FLUX.2 [klein] 4B, measured 2026-11-03 (docs/measurements.md:
  *  four heads in 18-24 s, a body in 15-16 s); the simple sheet is a back view (as long as a body) and a close-up of the
  *  face (1024×1024, about 0.6 of a body's pixels), so a body and a little over half another. The full sheet: atelier's
  *  (frontend/lib/personaje.ts, 2026-10-13 and 10-15). */
-export const SECONDS = { head: 4, headLoad: 8, body: 16, sheetSimple: 28, sheetFull: 720 };
+export const SECONDS = { head: 4, headLoad: 8, body: 16, sheetSimple: 28 };
 
 export function initialPicks(step: Step): Picks {
   const picks: Picks = {};
@@ -349,6 +347,17 @@ const tidy = (s: string) => s.replace(/\s+/g, " ").replace(/\s+([,.])/g, "$1").t
  *  with fair skin, dark brown eyes, long wavy black hair, freckles and round glasses». Original and fictional on purpose
  *  (Cheapsfield's guard): the creator makes characters, never a likeness of a real person. */
 const article = (word: string) => (/^[aeiou]/i.test(word) ? "an" : "a");
+
+/** What a creator's character is, for the describer, when a vision model alone would get it wrong: an animal, a hybrid,
+ *  an alien or anything else not human, in the creator's own words (Qwen3-VL called the black sheep "a young adult with
+ *  dark grey skin and a natural afro", 2026-11-03), or what you wrote your own picture shows. Null for a person made
+ *  from scratch, whom the describer reads well. */
+export function characterIdentity(picks: Picks): string | null {
+  if (picks.start === "picture") return text(picks.what, 120) || null;
+  if (String(picks.kind || "person") === "person") return null;
+  const said = describeHead(picks).replace(/^an? original, fictional /i, "");
+  return `${article(said)} ${said}`;
+}
 
 export function describeHead(picks: Picks): string {
   const extra = text(picks.extra);

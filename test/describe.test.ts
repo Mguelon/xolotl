@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { descriptionFrom } from "../lib/description.ts";
+import { descriptionFrom, promptFor } from "../lib/description.ts";
 
 test("reads the description ComfyUI keeps in its history", () => {
   const history = { abc: { outputs: { out: { text: ["The character is a young woman\nwith long  wavy auburn hair."] }, img: { images: [] } } } };
@@ -24,4 +24,17 @@ test("the describe workflow reads the picture and gives its text to a preview", 
   assert.match(graph.gen.inputs.prompt, /how far it reaches on the body/, "the garments' length, what kept the sweater down");
   assert.match(graph.gen.inputs.prompt, /Do not mention the shoes or the feet/, "the feet pulled a take into showing them");
   assert.deepEqual(graph.out.inputs.source, ["gen", 0]);
+});
+
+test("a character the app knows is described as what it is, not as a person", () => {
+  const graph = JSON.parse(readFileSync(join(process.cwd(), "workflows", "describe.api.json"), "utf8"));
+  const base: string = graph.gen.inputs.prompt;
+  const prompt = promptFor(base, "an anthropomorphic black sheep character with a sheep's face, covered in curly black wool. ");
+  assert.match(prompt, /the first starts with "The character is an anthropomorphic black sheep character with a sheep's face, covered in curly black wool,"/);
+  assert.match(prompt, /fur, wool, feathers or scales/);
+  assert.doesNotMatch(prompt, /naming the cut|an afro/, "the haircut list is what made the sheep's wool an afro");
+  assert.match(prompt, /how far it reaches on the body/, "the clothes are asked for as the workflow asks");
+  assert.match(prompt, /Do not mention the shoes or the feet/);
+  assert.match(prompt, /For example: The character is an anthropomorphic red fox/);
+  assert.equal(promptFor("Say what you see.", "a robot"), "This character is a robot. Say what you see.", "an edited workflow keeps its prompt");
 });

@@ -178,7 +178,7 @@ export function Creator() {
   const eta = step === "head" && own ? t.cr_eta_picture
     : step === "head"
     ? t.cr_eta_head.replace("{n}", String(heads)).replace("{t}", about(SECONDS.headLoad + heads * SECONDS.head))
-    : t.cr_eta.replace("{t}", about(step === "body" ? SECONDS.body : picks.sheet.kind === "full" ? SECONDS.sheetFull : SECONDS.sheetSimple));
+    : t.cr_eta.replace("{t}", about(step === "body" ? SECONDS.body : SECONDS.sheetSimple));
   const said = step === "head" ? headPrompt(picks.head) : step === "body" ? bodyPrompt(picks.head, picks.body) : "";
   const shown = GROUPS[step].filter((group) => !group.when || group.when(picks[step]));
 
@@ -239,7 +239,6 @@ export function Creator() {
       await start((c) => call<CharacterJob>(`/api/characters/${c.id}/edits`, json("POST", { kind: "body", from: from.id, prompt: bodyPrompt(picks.head, picks.body), picks })));
       return;
     }
-    if (picks.sheet.kind === "full") { setNotice(t.cr_full_soon); return; }
     await start((c) => call<CharacterJob>(`/api/characters/${c.id}/sheet`, json("POST", { name, picks })));
   }
 

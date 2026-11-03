@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bodyPrompt, editPrompt, headCount, headPrompt, initialPicks, type Picks } from "../lib/character.ts";
+import { bodyPrompt, characterIdentity, editPrompt, headCount, headPrompt, initialPicks, type Picks } from "../lib/character.ts";
 import { canvasFor, imageSize } from "../lib/characters.ts";
 
 const sheep: Picks = { ...initialPicks("head"), kind: "animal", style: "caricatura", species: "sheep", stance: "upright", coat: "wool", coat_color: "black" };
@@ -68,4 +68,12 @@ test("reads a PNG's size from its header", () => {
   view.setUint32(20, 1792);
   assert.deepEqual(imageSize(png), { width: 1024, height: 1792 });
   assert.equal(imageSize(new Uint8Array(40)), null);
+});
+
+test("the describer is told what a creator's character is when it is not a person", () => {
+  const sheep = { ...initialPicks("head"), kind: "animal", species: "sheep", coat: "wool", coat_color: "black" };
+  assert.equal(characterIdentity(sheep), "an anthropomorphic black sheep character with a sheep's face, covered in curly black wool");
+  assert.equal(characterIdentity({ ...initialPicks("head"), kind: "person" }), null, "a person is read well from the picture");
+  assert.equal(characterIdentity({ ...initialPicks("head"), start: "picture", what: "a shop's sheep mascot" }), "a shop's sheep mascot");
+  assert.equal(characterIdentity({ ...initialPicks("head"), start: "picture", what: "" }), null);
 });
