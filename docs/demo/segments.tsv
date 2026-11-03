@@ -23,9 +23,9 @@ docs/demo/build/rec/d-create-to-swap.webm	1.5	203.5	1	-	1385:112:38:866
 docs/demo/build/rec/d-create-to-swap.webm	7	303.2	1	-	1385:112:38:866
 docs/demo/build/rec/d-create-to-swap.webm	16	311.6	2.5	-	1385:112:38:866
 docs/demo/build/rec/d-create-to-swap.webm	3.5	327.6	1	-	1385:112:38:866
-# 03 the twin view: Lana's finished take
+# 03 the twin view: Lana's finished take, with the take's own sound (the result's audio laid where each play starts)
 docs/demo/build/card-n04.png	2.5
-docs/demo/build/rec/e-twin-lana.webm	14.5	20.8	1	1280:720:88:120
+docs/demo/build/rec/e-twin-lana-sound.mkv	14.5	20.8	1	1280:720:88:120
 # 04 how it was built, 05 why it is new, 06 measured
 docs/demo/build/card-n05.png	6
 docs/demo/build/rec/c-comfyui.webm	8	31.8
