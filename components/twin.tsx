@@ -2,10 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Props = { original: string; swap: string; labels: { original: string; swap: string; play: string; pause: string } };
+type Props = {
+  original: string; swap: string; labels: { original: string; swap: string; play: string; pause: string };
+  /** Where the take starts in the original clip, in seconds: the original runs that far ahead of the swap. */
+  offset?: number;
+};
 
 /** Original and swap in one frame. The swap sits on top, clipped at the divider; both videos run in step. */
-export function Twin({ original, swap, labels }: Props) {
+export function Twin({ original, swap, labels, offset = 0 }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const a = useRef<HTMLVideoElement>(null);
   const b = useRef<HTMLVideoElement>(null);
@@ -18,7 +22,10 @@ export function Twin({ original, swap, labels }: Props) {
   useEffect(() => {
     const lead = b.current, follow = a.current;
     if (!lead || !follow) return;
-    const sync = () => { if (Math.abs(follow.currentTime - lead.currentTime) > 0.08) follow.currentTime = lead.currentTime; };
+    const sync = () => {
+      const at = lead.currentTime + offset;
+      if (Math.abs(follow.currentTime - at) > 0.08) follow.currentTime = at;
+    };
     const onPlay = () => { void follow.play().catch(() => {}); setPlaying(true); };
     const onPause = () => { follow.pause(); setPlaying(false); };
     lead.addEventListener("timeupdate", sync);
@@ -33,7 +40,7 @@ export function Twin({ original, swap, labels }: Props) {
       lead.removeEventListener("pause", onPause);
       lead.removeEventListener("ended", onPause);
     };
-  }, [original, swap]);
+  }, [original, swap, offset]);
 
   function place(clientX: number) {
     const rect = box.current?.getBoundingClientRect();
@@ -68,7 +75,8 @@ export function Twin({ original, swap, labels }: Props) {
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <video ref={a} className="original" src={original} muted playsInline preload="auto" />
+      <video ref={a} className="original" src={original} muted playsInline preload="auto"
+        onLoadedMetadata={(event) => { event.currentTarget.currentTime = offset + (b.current?.currentTime ?? 0); }} />
       <video
         ref={b} className="swap" src={swap} playsInline preload="auto"
         onLoadedMetadata={(event) => {

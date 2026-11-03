@@ -313,9 +313,9 @@ export function AppRunner() {
 
   const shown = selected ? takes.find((take) => take.id === selected) ?? job?.take ?? null : null;
   const twin = shown?.status === "succeeded" && shown.result
-    ? { original: `/api/takes/${shown.id}/clip.mp4`, swap: `/api/takes/${shown.id}/result.mp4`, id: shown.id }
+    ? { original: `/api/takes/${shown.id}/clip.mp4`, swap: `/api/takes/${shown.id}/result.mp4`, id: shown.id, offset: shown.settings.start ?? 0 }
     : job?.status === "succeeded" && job.outputs[0]
-      ? { original: videoUrl ?? "", swap: job.outputs.find((output) => /result/i.test(output.name))?.url ?? job.outputs[0].url, id: job.id }
+      ? { original: videoUrl ?? "", swap: job.outputs.find((output) => /result/i.test(output.name))?.url ?? job.outputs[0].url, id: job.id, offset: job.take?.settings.start ?? start }
       : null;
 
   const elapsedMs = job?.startedAt ? now - new Date(job.startedAt).getTime() : submittedAt.current ? now - submittedAt.current : 0;
@@ -438,7 +438,7 @@ export function AppRunner() {
           {/* The screen: the take, or the clip (dimmed under the progress while it runs), or the picture, or where to start. */}
           <div className={`screen${working ? " working" : ""}`}>
             {twin ? (
-              <Twin key={twin.id} original={twin.original} swap={twin.swap} labels={{ original: t.original, swap: t.swap, play: t.play, pause: t.pause }} />
+              <Twin key={twin.id} original={twin.original} swap={twin.swap} offset={twin.offset} labels={{ original: t.original, swap: t.swap, play: t.play, pause: t.pause }} />
             ) : stageClip ? (
               <video className="preview" key={stageClip} src={stageClip} controls={!working} muted playsInline loop={working} autoPlay={working} />
             ) : characterUrl ? (
