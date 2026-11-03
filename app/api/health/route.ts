@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { applyModelOverrides } from "../../../lib/comfy";
-import type { Graph } from "../../../lib/swap";
+import { comfyInstalled } from "../../../lib/comfyui-progress";
+import { adaptations, fitToInstalled, type Graph } from "../../../lib/swap";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,8 @@ export type Health = {
   comfyui: { url: string; ok: boolean; version: string | null; gpu: string | null; vramGb: number | null };
   missingNodes: string[];
   missingModels: string[];
+  /** What the take adapts to this ComfyUI (lib/swap.ts adaptations): it runs, so these do not make the pill red. */
+  notes: string[];
   checkedAt: string;
 };
 
@@ -32,6 +35,7 @@ async function check(): Promise<Health> {
     comfyui: { url: comfyui, ok: false, version: null, gpu: null, vramGb: null },
     missingNodes: [],
     missingModels: [],
+    notes: [],
     checkedAt: new Date().toISOString(),
   };
   await json(`${proxy}/api/v2/health`).then(() => { health.proxy.ok = true; }).catch(() => {});
@@ -43,19 +47,26 @@ async function check(): Promise<Health> {
     health.comfyui.gpu = stats.devices?.[0]?.name?.replace(/^cuda:\d+\s*/, "").split(":")[0].trim() ?? null;
     health.comfyui.vramGb = stats.devices?.[0]?.vram_total ? Math.round(stats.devices[0].vram_total / 2 ** 30) : null;
     const template = applyModelOverrides(JSON.parse(await readFile(join(process.cwd(), "workflows", "swap.api.json"), "utf8")) as Graph);
-    const nodes = [...new Set(Object.values(template).map((node) => node.class_type))];
-    const present = await Promise.all(nodes.map((node) => json(`${comfyui}/object_info/${encodeURIComponent(node)}`).then(() => true).catch(() => false)));
+    // What a take runs (loadTemplate): the template fitted to what this ComfyUI has.
+    const installed = await comfyInstalled();
+    const fitted = installed ? fitToInstalled(structuredClone(template), installed) : template;
+    health.notes = adaptations(template, fitted);
+    const nodes = [...new Set(Object.values(fitted).map((node) => node.class_type))];
+    // ComfyUI answers {} for a node it does not have.
+    const present = await Promise.all(nodes.map((node) => json<object>(`${comfyui}/object_info/${encodeURIComponent(node)}`)
+      .then((info) => Object.keys(info).length > 0).catch(() => false)));
     health.missingNodes = nodes.filter((_, index) => !present[index]);
     const models: [string, string][] = [
-      ["diffusion_models", String(template["1"].inputs.unet_name)],
-      ["loras", String(template["4"].inputs.lora_name)],
-      ["loras", String(template["850"].inputs.lora_name)],
-      ["text_encoders", String(template["6"].inputs.clip_name)],
-      ["text_encoders", String(template.describe_model.inputs.clip_name)],
-      ["vae", String(template["7"].inputs.vae_name)],
-      ["vae", String(template["8"].inputs.vae_name)],
-      ["checkpoints", String(template["100"].inputs.ckpt_name)],
+      ["diffusion_models", String(fitted["1"].inputs.unet_name)],
+      ["loras", String(fitted["4"].inputs.lora_name)],
+      ["loras", String(fitted["850"].inputs.lora_name)],
+      ["text_encoders", String(fitted["6"].inputs.clip_name)],
+      ["text_encoders", String(fitted.describe_model.inputs.clip_name)],
+      ["vae", String(fitted["7"].inputs.vae_name)],
+      ["vae", String(fitted["8"].inputs.vae_name)],
+      ["checkpoints", String(fitted["100"].inputs.ckpt_name)],
     ];
+    if (fitted.veda) models.push(["veda", String(fitted.veda.inputs.predictor)]);
     const lists = new Map<string, string[]>();
     for (const [folder, file] of models) {
       if (!lists.has(folder)) lists.set(folder, await json<string[]>(`${comfyui}/models/${folder}`).catch(() => []));

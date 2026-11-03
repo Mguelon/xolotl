@@ -21,7 +21,7 @@ type Job = {
 };
 type Health = {
   ok: boolean; proxy: { ok: boolean }; comfyui: { ok: boolean; version: string | null; gpu: string | null; vramGb: number | null };
-  missingNodes: string[]; missingModels: string[];
+  missingNodes: string[]; missingModels: string[]; notes: string[];
 };
 type Phase = "idle" | "submitting" | "running";
 
@@ -59,6 +59,9 @@ const mmss = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
+
+/** A count with the word that goes with it: "1 falta", "2 faltan". */
+const counted = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 function Tile(props: {
   kind: "clip" | "character"; label: string; hint: string; accept: string; disabled: boolean;
@@ -329,13 +332,13 @@ export function AppRunner() {
         <a className="brand" href="/" aria-label="Xólotl"><Mark /><span className="brand-name">Xólotl</span></a>
         <p className="tagline">{t.tagline}</p>
         <div className="top-right">
-          <span className={`pill ${health ? (health.ok ? "ok" : "bad") : ""}`} title={health ? [...health.missingNodes, ...health.missingModels].join("\n") : ""}>
+          <span className={`pill ${health ? (health.ok ? "ok" : "bad") : ""}`} title={health ? [...health.missingNodes, ...health.missingModels, ...health.notes].join("\n") : ""}>
             <span className="dot" aria-hidden />
             {!health ? t.health_checking
               : !health.proxy.ok ? t.health_proxy
               : !health.comfyui.ok ? t.health_bad
-              : health.ok ? <><strong>{t.health_ok}</strong><span className="gpu">{health.comfyui.gpu ? ` · ${health.comfyui.gpu}${health.comfyui.vramGb ? ` ${health.comfyui.vramGb} GB` : ""}` : ""}</span></>
-              : `${health.missingNodes.length + health.missingModels.length} missing`}
+              : health.ok ? <><strong>{t.health_ok}</strong>{health.notes.length > 0 ? ` · ${counted(health.notes.length, t.health_adapted_one, t.health_adapted_many)}` : ""}<span className="gpu">{health.comfyui.gpu ? ` · ${health.comfyui.gpu}${health.comfyui.vramGb ? ` ${health.comfyui.vramGb} GB` : ""}` : ""}</span></>
+              : counted(health.missingNodes.length + health.missingModels.length, t.health_missing_one, t.health_missing_many)}
           </span>
           <button type="button" className="ghost lang" onClick={toggleLang} aria-label="Language">{t.lang}</button>
           <a className="ghost" href={REPO} target="_blank" rel="noreferrer" aria-label={t.source}><span className="label">{t.source} </span>↗</a>

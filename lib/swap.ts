@@ -187,6 +187,37 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
 }
 
 /**
+ * What the take changes to run with what is installed, in plain words: one note per difference between the template
+ * and the graph fitToInstalled made of it. None of them stops a take; the health pill lists them.
+ */
+export function adaptations(template: Graph, fitted: Graph): string[] {
+  const dropped = (id: string) => !!template[id] && !fitted[id];
+  const became = (id: string, type: string) => template[id]?.class_type !== type && fitted[id]?.class_type === type;
+  const notes: string[] = [];
+  // Runs B and E of docs/measurements.md: 6 min 12 s without Veda against 5 min 31 s with it.
+  if (dropped("veda")) notes.push("Veda sparse attention not installed: takes run full attention, about 12 % slower at 480p");
+  for (const [what, id, input] of [["H3 weights", "1", "unet_name"], ["Video VAE", "7", "vae_name"]] as const) {
+    const wanted = String(template[id].inputs[input]), used = String(fitted[id].inputs[input]);
+    if (used !== wanted) {
+      notes.push(`${what}: ${used} instead of ${wanted}${wanted.includes("int8") ? " (the int8 file needs PyTorch on CUDA 13)" : ""}`);
+    }
+  }
+  if (became("110", "H3CharacterSwapExpandMask")) {
+    notes.push("The pack grows the person's mask (Xólotl's node not installed: a few seconds slower)");
+  }
+  if (became("107a", "H3CharacterSwapRecoverMasks")) {
+    notes.push("The pack finds the person on empty frames (Xólotl's node not installed: SAM loaded once a frame)");
+  }
+  if (dropped("face")) notes.push("No face close-up (Xólotl's node not installed): the character's face may not hold");
+  if (dropped("restore")) {
+    notes.push("The result comes back at the model's canvas size, not the clip's, with the clip cropped to it and the person not "
+      + "framed (Xólotl's size nodes not installed)");
+  }
+  if (dropped("reuse")) notes.push("The first window's frames are encoded twice (Xólotl's node not installed)");
+  return notes;
+}
+
+/**
  * Veda's sparsity per quality. Its R2VA predictor was trained at 1024×768 among other sizes: at 768p its own budget
  * ("trained", 32 key tiles) takes 79.3 s per step against 87.1 s at 79 %, with the same colour and 1 % less fine
  * detail. At 480p the canvas is outside its training and no budget beat 79 % (docs/measurements.md).

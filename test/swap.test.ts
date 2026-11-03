@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  CHARACTER_TAG, PROMPT_NODES, XOLOTL_NODES, fitToInstalled, PREFERRED, readSettings, standaloneWorkflow, swapPrompt, swapWorkflow,
+  CHARACTER_TAG, PROMPT_NODES, XOLOTL_NODES, adaptations, fitToInstalled, PREFERRED, readSettings, standaloneWorkflow, swapPrompt, swapWorkflow,
   type Graph, type Installed,
 } from "../lib/swap.ts";
 import { estimateMinutes, windowCount } from "../lib/estimates.ts";
@@ -66,12 +66,15 @@ test("runs recipe F: int8 H3, the ref2v 4-step LoRA, the int8 VAE and Veda befor
   assert.deepEqual(graph["800"].inputs.model, ["veda", 0]);
 });
 
+/** A ComfyUI with everything the recipe uses, the template fitted to what one has, and one without a node of Xólotl's. */
+const all: Installed = {
+  diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae],
+  vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true, xolotl: [...XOLOTL_NODES],
+};
+const fit = (installed: Installed, graph = template) => fitToInstalled(structuredClone(graph), installed);
+const without = (name: string) => ({ ...all, xolotl: all.xolotl.filter((n) => n !== name) });
+
 test("fits the recipe to what ComfyUI has installed", () => {
-  const all: Installed = {
-    diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae],
-    vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true, xolotl: [...XOLOTL_NODES],
-  };
-  const fit = (installed: Installed, graph = template) => fitToInstalled(structuredClone(graph), installed);
   assert.deepEqual(fit(all), template, "everything installed: the template as it is");
   const noVeda = fit({ ...all, vedaNode: false });
   assert.equal(noVeda.veda, undefined);
@@ -84,7 +87,6 @@ test("fits the recipe to what ComfyUI has installed", () => {
   pinned["1"].inputs.unet_name = PREFERRED.unet[1];
   assert.equal(fit(all, pinned)["1"].inputs.unet_name, PREFERRED.unet[1], "an installed override is kept");
   assert.equal(fit({ ...all, diffusionModels: [], vaes: [] })["1"].inputs.unet_name, PREFERRED.unet[0], "nothing known: no change");
-  const without = (name: string) => ({ ...all, xolotl: all.xolotl.filter((n) => n !== name) });
   const noReuse = fit(without("XolotlReuseEncodes"));
   assert.equal(noReuse.reuse, undefined);
   assert.deepEqual(noReuse["800"].inputs.video_vae, ["7", 0], "without it the pack reads the VAE itself");
@@ -115,6 +117,32 @@ test("fits the recipe to what ComfyUI has installed", () => {
   for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "107a", "box", "map"]) assert.equal(bare[id], undefined, `${id} goes too`);
   assert.deepEqual(bare["110"].inputs.masks, ["107", 0], "the pack tracks the person on its own canvas");
   assert.ok(!/\["(fit|fit0|restore|box|map|face|\d+a)",/.test(JSON.stringify(bare)), "nothing reads the removed nodes");
+});
+
+test("says in plain words what the take adapts to what ComfyUI has", () => {
+  const notes = (installed: Installed, graph = template) => adaptations(graph, fit(installed, graph));
+  assert.deepEqual(notes(all), [], "everything installed: nothing to say");
+  const noVeda = notes({ ...all, vedaNode: false });
+  assert.equal(noVeda.length, 1);
+  assert.match(noVeda[0], /^Veda .*full attention/);
+  assert.deepEqual(notes({ ...all, vedaPredictors: [] }), noVeda, "the node without its predictor: the same take");
+  assert.deepEqual(notes({ ...all, diffusionModels: [PREFERRED.unet[1]], vaes: [PREFERRED.vae[1]] }), [
+    `H3 weights: ${PREFERRED.unet[1]} instead of ${PREFERRED.unet[0]} (the int8 file needs PyTorch on CUDA 13)`,
+    `Video VAE: ${PREFERRED.vae[1]} instead of ${PREFERRED.vae[0]} (the int8 file needs PyTorch on CUDA 13)`,
+  ], "fp8 only");
+  const custom = structuredClone(template);
+  custom["1"].inputs.unet_name = "my_h3.safetensors";
+  assert.deepEqual(notes(all, custom), [`H3 weights: ${PREFERRED.unet[0]} instead of my_h3.safetensors`],
+    "an override that is not installed: nothing said of CUDA 13");
+  const noGrow = notes(without("XolotlGrowMasks"));
+  assert.equal(noGrow.length, 1);
+  assert.match(noGrow[0], /pack grows the person's mask/);
+  assert.match(notes(without("XolotlRecoverMasks")).join("\n"), /pack finds the person on empty frames/);
+  const bare = notes({ ...all, xolotl: [] });
+  assert.equal(bare.length, 4, bare.join("\n"));
+  for (const words of [/grows the person's mask/, /no face close-up/i, /not the clip's, with the clip cropped/, /person not framed/, /encoded twice/]) {
+    assert.match(bare.join("\n"), words);
+  }
 });
 
 test("gives the result back at the clip's own size through Xólotl's nodes", () => {
