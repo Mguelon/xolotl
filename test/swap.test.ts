@@ -10,9 +10,9 @@ import { estimateMinutes, windowCount } from "../lib/estimates.ts";
 const template = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8")) as Graph;
 const describe = JSON.parse(readFileSync(new URL("../workflows/describe.api.json", import.meta.url), "utf8")) as Graph;
 /** The prompt the face take measured: Xólotl's instruction with the close-up, nothing else. */
-const FACE_PROMPT = "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses "
-  + "and the proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference "
-  + "character's face, hair and clothing. Preserve the scene and the audio timing.";
+const FACE_PROMPT = "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures, poses and "
+  + "movement. <Picture 2> is a close-up of the same character's face. The character's face, hair, skin, body build and "
+  + "clothing stay exactly as in <Picture 1> in every frame. Preserve the scene, the camera framing and the audio timing.";
 const request = {
   video: "clip.mp4",
   character: "hero.png",
@@ -205,7 +205,7 @@ test("gives H3 a close-up of the character's face, cut from the uploaded picture
   assert.equal(graph.face.class_type, "XolotlFaceCrop");
   assert.deepEqual(graph.face.inputs.image, ["9", 0]);
   assert.deepEqual(graph["803"].inputs.segment_reference, ["face", 0]);
-  assert.match(String(graph["801"].inputs.prompt), /everything\. <Picture 2> is a close-up of the same character's face\. Keep/);
+  assert.match(String(graph["801"].inputs.prompt), /movement\. <Picture 2> is a close-up of the same character's face\. The character's/);
   const anchored = String(swapWorkflow(template, { ...request, anchor: "anchor.png" })["801"].inputs.prompt);
   assert.match(anchored, /<Picture 3> is a close-up of the same character's face\./, "after the anchor");
   assert.match(anchored, /Start from the first frame in <Picture 2>\./);
@@ -243,9 +243,9 @@ test("drops the first-frame nodes when there is none", () => {
 test("names the person to replace and what to keep, then the direction", () => {
   assert.equal(
     swapPrompt({ direction: "  keep the glasses  ", person: " the woman with long brown hair " }),
-    "Replace the woman with long brown hair in <Video 1> with the character in <Picture 1>, keeping that person's gestures "
-    + "and poses and the proportions of everything. "
-    + "Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. keep the glasses",
+    "Replace the woman with long brown hair in <Video 1> with the character in <Picture 1>, keeping that person's gestures, "
+    + "poses and movement. The character's face, hair, skin, body build and clothing stay exactly as in <Picture 1> in "
+    + "every frame. Preserve the scene, the camera framing and the audio timing. keep the glasses",
   );
   assert.match(swapPrompt({ direction: "x" }), /^Replace the person in <Video 1>/, "no description: the person");
   assert.match(swapPrompt({ withAnchor: true }), /Start from the first frame in <Picture 2>\.$/);

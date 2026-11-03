@@ -794,7 +794,7 @@
         "describe_model",
         0
       ],
-      "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph of three sentences; the first starts with \"The character is\". First sentence: their apparent age and build, their skin tone, their hair colour, length and style, their eye colour, and features such as freckles, glasses or make-up. Second sentence: every garment on the upper body with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans or a jacket that reaches the hips. Third sentence: the trousers, skirt or dress with its colour, type and fit. Do not mention the shoes or the feet, the background, the pose or the facial expression. For example: The character is a middle-aged man with a stocky build, olive skin, short curly black hair, brown eyes and a trimmed beard. He wears an open plaid flannel shirt over a white t-shirt, both reaching the belt of his trousers. His trousers are loose grey chinos.",
+      "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph of three sentences; the first starts with \"The character is\". First sentence: their apparent age and build, their skin tone, their hair colour, length and style, naming the cut, such as a bowl cut, a bob, an afro, a quiff or a ponytail, their eye colour, and features such as freckles, glasses or make-up. Second sentence: every garment on the upper body with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans or a jacket that reaches the hips. Third sentence: the trousers, skirt or dress with its colour, type and fit, without saying where it ends on the legs. Do not mention the shoes or the feet, the background, the pose or the facial expression. For example: The character is a middle-aged man with a stocky build, olive skin, short curly black hair, brown eyes and a trimmed beard. He wears an open plaid flannel shirt over a white t-shirt, both reaching the belt of his trousers. His trousers are loose grey chinos.",
       "image": [
         "9",
         0
@@ -826,7 +826,7 @@
         "direction",
         0
       ],
-      "f_string": "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures and poses and the proportions of everything. <Picture 2> is a close-up of the same character's face. Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing. <Picture 1>: {a} {b}"
+      "f_string": "Replace the person in <Video 1> with the character in <Picture 1>, keeping that person's gestures, poses and movement. <Picture 2> is a close-up of the same character's face. The character's face, hair, skin, body build and clothing stay exactly as in <Picture 1> in every frame. Preserve the scene, the camera framing and the audio timing. <Picture 1>: {a} {b}"
     },
     "class_type": "StringFormat",
     "_meta": {

@@ -80,11 +80,10 @@ export function swapPrompt({ description = "", direction = "", person = "", with
   const who = person.trim() || DEFAULT_PERSON;
   const looks = description.trim();
   return [
-    `Replace ${who} in <Video 1> with the character in ${CHARACTER_TAG}, keeping that person's gestures and poses and the`
-    + " proportions of everything.",
+    `Replace ${who} in <Video 1> with the character in ${CHARACTER_TAG}, keeping that person's gestures, poses and movement.`,
     withFace ? `<Picture ${withAnchor ? 3 : 2}> is a close-up of the same character's face.` : "",
-    "Keep the reference character's face, hair and clothing.",
-    "Preserve the scene and the audio timing.",
+    `The character's face, hair, skin, body build and clothing stay exactly as in ${CHARACTER_TAG} in every frame.`,
+    "Preserve the scene, the camera framing and the audio timing.",
     withAnchor ? "Start from the first frame in <Picture 2>." : "",
     looks ? `${CHARACTER_TAG}: ${looks}` : "",
     direction.trim(),

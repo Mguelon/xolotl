@@ -329,6 +329,28 @@ same "muscular build". A take of that sheet through the app (b7ce9741, 13 s at 4
 a bodybuilder before this change): in eight frames across the 13 s he keeps his build, the bowl cut, the cropped polo
 and the olive jacket, through the turn and the lean into the camera.
 
+### The character's body from the picture, and where a long take loses the ending (2026-11-02)
+
+With sheet 3's bodybuilder, Mike saw two things in the 13 s takes: the character came out thinner with Qwen's words
+("muscular build") than with a hand-written "massive, extremely muscular bodybuilder build", and in the last second,
+where the performer leans into the camera for a close-up of her face, neither take followed her: one stepped back to
+full body (its description named his boots), the other stayed at mid-shot and grew red blots for hands where her face
+had been. The prompt asked to keep "the proportions of everything" and copied from the picture only "face, hair and
+clothing", not the body. A/B on the clip's last 5 s (8-13 s, 480p, the same description and seed 1568899394, through
+the app):
+
+| Prompt | His build | The close-up at the end |
+|---|---|---|
+| A: *…keeping that person's gestures and poses and the proportions of everything… Keep the reference character's face, hair and clothing. Preserve the scene and the audio timing.* (390f9090) | muscular | followed, his face fills the frame; no blots |
+| B: *…keeping that person's gestures, poses and movement… The character's face, hair, skin, body build and clothing stay exactly as in `<Picture 1>` in every frame. Preserve the scene, the camera framing and the audio timing.* (29db9652) | the same | the same |
+
+So the ending is lost by the long take, not by the prompt: in 13 s it falls in the third window, which carries on
+from the second at the size the character had there. And the build follows the description's words, not the
+prompt's: only "massive, extremely muscular" drew him as big as his picture. B stays, since it asks for the picture as
+it is and no longer for the performer's proportions. The describer now names the haircut and no longer says where the
+trousers end (Qwen had written "falling to the ankles"); it still calls this bowl cut a "buzz cut" and this build
+"muscular", so a character this far from average is worth a word in the description box.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.
