@@ -337,6 +337,11 @@ export function AppRunner() {
     : job.status === "canceling" ? t.phase_canceling
     : ACTIVE.has(job.status) ? stageText ?? t.phase_running : job.status === "succeeded" ? t.phase_done : CANCELED.has(job.status) ? t.canceled : t.failed;
 
+  // What the stage shows: the progress over the clip while a take runs (the take's own clip after a reload).
+  const working = (busy || active || !!message) && !twin;
+  const stageClip = videoUrl ?? (job?.take && ACTIVE.has(job.status) ? `/api/takes/${job.take.id}/clip.mp4` : null);
+  const stageTitle = twin ? t.stage_result : busy || active ? t.stage_working : videoUrl ? t.stage_clip : characterUrl ? t.stage_character : t.empty_title;
+
   return (
     <div className="app">
       <header className="top">
@@ -407,113 +412,132 @@ export function AppRunner() {
           </div>
         </aside>
 
-        <section className="stage" aria-label={twin ? t.stage_result : t.stage_clip}>
+        <section className="stage" aria-label={stageTitle}>
           <div className="stage-head">
-            <h1 className="stage-title">{twin ? t.stage_result : videoUrl ? t.stage_clip : t.examples}</h1>
-            {twin && shown && (
-              <p className="stage-meta">
-                <span><b>{shown.settings.size}</b> · {shown.settings.seconds} s</span>
-                {shown.elapsedMs ? <span>{mmss(shown.elapsedMs)} {t.elapsed}</span> : null}
-                <span>{t.seed} <b>{shown.settings.seed}</b></span>
-              </p>
-            )}
+            <div>
+              <p className="kicker">{t.stage_kicker}</p>
+              <h1 className="stage-title">{stageTitle}</h1>
+            </div>
+            <div className="stage-side">
+              {/* A take is running while an earlier one is shown: its progress, one click away. */}
+              {twin && (busy || active) && (
+                <button type="button" className="live-pill" onClick={() => setSelected(null)}>
+                  <span className="dot" aria-hidden />{t.stage_working}{percent !== null ? ` · ${percent}%` : ""}
+                </button>
+              )}
+              {twin && shown && (
+                <p className="stage-meta">
+                  <span><b>{shown.settings.size}</b> · {shown.settings.seconds} s</span>
+                  {shown.elapsedMs ? <span>{mmss(shown.elapsedMs)} {t.elapsed}</span> : null}
+                  <span>{t.seed} <b>{shown.settings.seed}</b></span>
+                </p>
+              )}
+            </div>
           </div>
-          <div className="screen">
-          {twin ? (
-            <Twin key={twin.id} original={twin.original} swap={twin.swap} labels={{ original: t.original, swap: t.swap, play: t.play, pause: t.pause }} />
-          ) : videoUrl ? (
-            <video className="preview" src={videoUrl} controls muted playsInline />
-          ) : (
-            <section className="examples">
-              <p>{t.example_hint}</p>
-              <div className="example-grid">
-                {EXAMPLES.map((example) => (
-                  <button type="button" key={example.id} className="example" disabled={busy} onClick={() => void chooseExample(example)}>
-                    <img src={example.poster} alt="" />
-                    <img className="who" src={example.characterPoster} alt={example.name} />
-                    <span className="name">{example.name}</span>
-                  </button>
-                ))}
+
+          {/* The screen: the take, or the clip (dimmed under the progress while it runs), or the picture, or where to start. */}
+          <div className={`screen${working ? " working" : ""}`}>
+            {twin ? (
+              <Twin key={twin.id} original={twin.original} swap={twin.swap} labels={{ original: t.original, swap: t.swap, play: t.play, pause: t.pause }} />
+            ) : stageClip ? (
+              <video className="preview" key={stageClip} src={stageClip} controls={!working} muted playsInline loop={working} autoPlay={working} />
+            ) : characterUrl ? (
+              <img className="preview" src={characterUrl} alt={character?.name ?? ""} />
+            ) : !working && (
+              <div className="empty">
+                <span className="empty-mark" aria-hidden><Mark /></span>
+                <h2>{t.empty_start}</h2>
+                <p>{t.empty_body}</p>
+                <small>{t.empty_note}</small>
+                <p className="try">
+                  <span>{t.examples_try}</span>
+                  {EXAMPLES.map((example) => (
+                    <button type="button" key={example.id} className="chip" disabled={busy} onClick={() => void chooseExample(example)}>{example.name}</button>
+                  ))}
+                </p>
               </div>
-            </section>
-          )}
+            )}
+            {working && (
+              <div className={`progress${error ? " error" : ""}`} role="status" aria-live="polite">
+                <div className="progress-head">
+                  <span className="phase">{error ? message || t.failed : phaseText || message}</span>
+                  {(active || busy) && <span className="time">{mmss(elapsedMs)}</span>}
+                  {job && ACTIVE.has(job.status) && job.status !== "canceling" && <button type="button" className="cancel" onClick={() => void cancel()}>{t.cancel}</button>}
+                </div>
+                {(active || busy) && !error && (
+                  <div className={`track${percent === null ? " indeterminate" : ""}`}><div className="fill" style={{ "--p": `${percent ?? 0}%` } as React.CSSProperties} /></div>
+                )}
+                {stage && !error && (
+                  <ol className="stages">
+                    {STAGES.map((name, index) => {
+                      const at = STAGES.indexOf(stage.name);
+                      return <li key={name} className={index < at ? "done" : undefined} aria-current={index === at ? "step" : undefined}>
+                        {{ prepare: t.step_prepare, encode: t.step_encode, sample: t.step_sample, finish: t.step_finish }[name]}
+                      </li>;
+                    })}
+                  </ol>
+                )}
+                <div className="detail">
+                  {percent !== null && <span><b>{percent}%</b></span>}
+                  {progress?.currentNodeClass && <span>{progress.currentNodeClass}</span>}
+                  {progress?.nodesDone != null && progress.nodesTotal != null && <span>{progress.nodesDone}/{progress.nodesTotal} nodes</span>}
+                  {!stage && progress?.step != null && progress.steps != null && <span>step {progress.step}/{progress.steps}</span>}
+                  {job?.gpu && job.gpu.utilization != null && <span>GPU <b>{job.gpu.utilization}%</b>{job.gpu.vramUsedGb != null ? ` · ${job.gpu.vramUsedGb}${job.gpu.vramTotalGb ? ` / ${job.gpu.vramTotalGb}` : ""} GB` : ""}</span>}
+                  {(active || busy) && !error && (remaining !== null || stage?.name === "finish") && (
+                    <span><b>{remaining !== null && remaining >= 60 ? t.left_min.replace("{m}", String(Math.round(remaining / 60))) : t.left_soon}</b></span>
+                  )}
+                  {(active || busy) && !error && remaining === null && stage?.name !== "finish" && (() => {
+                    const settings = job?.take?.settings;
+                    const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS) : estimateMinutes(size, seconds);
+                    return <span>{estimate ? t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1])) : t.eta_hint}</span>;
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
 
           {twin && shown && (
             <div className="bar">
-              <div className="actions">
-                <div className="rerun" title={t.workflow_hint}>
-                  <a className="btn" href={`/api/takes/${shown.id}/workflow.json`} download>{t.workflow}</a>
-                  <a className="btn" href={`/api/takes/${shown.id}/clip.mp4`} download={`xolotl-${shown.id.slice(0, 8)}-clip.mp4`}>{t.clip_file}</a>
-                  <a className="btn" href={`/api/takes/${shown.id}/${shown.character}`} download={`xolotl-${shown.id.slice(0, 8)}-${shown.character}`}>{t.character_file}</a>
-                  <small>{t.rerun_hint}</small>
-                </div>
-                <a className="btn primary" href={twin.swap} download={`xolotl-${shown.id.slice(0, 8)}.mp4`}>{t.download}</a>
+              <div className="rerun" title={`${t.workflow_hint} ${t.rerun_hint}`}>
+                <a className="btn" href={`/api/takes/${shown.id}/workflow.json`} download>{t.workflow}</a>
+                <a className="btn" href={`/api/takes/${shown.id}/clip.mp4`} download={`xolotl-${shown.id.slice(0, 8)}-clip.mp4`}>{t.clip_file}</a>
+                <a className="btn" href={`/api/takes/${shown.id}/${shown.character}`} download={`xolotl-${shown.id.slice(0, 8)}-${shown.character}`}>{t.character_file}</a>
               </div>
+              <a className="btn primary" href={twin.swap} download={`xolotl-${shown.id.slice(0, 8)}.mp4`}>{t.download}</a>
             </div>
           )}
 
-          {(busy || active || (message && !twin)) && (
-            <div className={`progress${error ? " error" : ""}`} role="status" aria-live="polite">
-              <div className="progress-head">
-                <span className="phase">{error ? message || t.failed : phaseText || message}</span>
-                {(active || busy) && <span className="time">{mmss(elapsedMs)}</span>}
-                {job && ACTIVE.has(job.status) && job.status !== "canceling" && <button type="button" className="cancel" onClick={() => void cancel()}>{t.cancel}</button>}
-              </div>
-              {(active || busy) && !error && (
-                <div className={`track${percent === null ? " indeterminate" : ""}`}><div className="fill" style={{ "--p": `${percent ?? 0}%` } as React.CSSProperties} /></div>
-              )}
-              {stage && !error && (
-                <ol className="stages">
-                  {STAGES.map((name, index) => {
-                    const at = STAGES.indexOf(stage.name);
-                    return <li key={name} className={index < at ? "done" : undefined} aria-current={index === at ? "step" : undefined}>
-                      {{ prepare: t.step_prepare, encode: t.step_encode, sample: t.step_sample, finish: t.step_finish }[name]}
-                    </li>;
-                  })}
-                </ol>
-              )}
-              <div className="detail">
-                {percent !== null && <span><b>{percent}%</b></span>}
-                {progress?.currentNodeClass && <span>{progress.currentNodeClass}</span>}
-                {progress?.nodesDone != null && progress.nodesTotal != null && <span>{progress.nodesDone}/{progress.nodesTotal} nodes</span>}
-                {!stage && progress?.step != null && progress.steps != null && <span>step {progress.step}/{progress.steps}</span>}
-                {job?.gpu && job.gpu.utilization != null && <span>GPU <b>{job.gpu.utilization}%</b>{job.gpu.vramUsedGb != null ? ` · ${job.gpu.vramUsedGb}${job.gpu.vramTotalGb ? ` / ${job.gpu.vramTotalGb}` : ""} GB` : ""}</span>}
-                {(active || busy) && !error && (remaining !== null || stage?.name === "finish") && (
-                  <span><b>{remaining !== null && remaining >= 60 ? t.left_min.replace("{m}", String(Math.round(remaining / 60))) : t.left_soon}</b></span>
-                )}
-                {(active || busy) && !error && remaining === null && stage?.name !== "finish" && (() => {
-                  const settings = job?.take?.settings;
-                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS) : estimateMinutes(size, seconds);
-                  return <span>{estimate ? t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1])) : t.eta_hint}</span>;
-                })()}
-              </div>
-            </div>
-          )}
-
-          <div className="takes">
-            <h2 className="eyebrow">{t.takes}</h2>
+          <section className="session" aria-label={t.takes}>
+            <header>
+              <h2>{t.takes}</h2>
+              <small>{counted(takes.length, t.take_one, t.take_many)}</small>
+            </header>
             {takes.length === 0 ? <p className="takes-empty">{t.takes_empty}</p> : (
-              <div className="take-list">
-                {takes.map((take) => (
-                  <div className="take-wrap" key={take.id}>
-                    <button type="button" className="take" aria-current={selected === take.id} onClick={() => { if (take.status === "succeeded") setSelected(take.id); else if (ACTIVE.has(take.status) && !busy) resume(take); }}>
-                      <img src={`/api/takes/${take.id}/${take.character}`} alt="" />
-                      <span>
-                        <span className="t1"><span>{take.settings.size} · {take.settings.seconds} s</span><span className={`st ${take.status === "succeeded" ? "ok" : ACTIVE.has(take.status) ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden /></span>
-                        <span className="t2">{take.elapsedMs ? mmss(take.elapsedMs) : take.status === "running" && take.startedAt ? mmss(now - Date.parse(take.startedAt)) : statusLabel(take.status)} · {new Date(take.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      </span>
-                    </button>
-                    {!(ACTIVE.has(take.status) && !CANCELED.has(take.status)) && (
-                      <button type="button" className={`take-x${confirmDelete === take.id ? " armed" : ""}`} aria-label={t.delete_label} onClick={() => void removeTake(take.id)} onBlur={() => setConfirmDelete((current) => (current === take.id ? null : current))}>
-                        {confirmDelete === take.id ? t.delete_confirm : "×"}
+              <div className="thumbs">
+                {takes.map((take) => {
+                  const live = ACTIVE.has(take.status) && !CANCELED.has(take.status);
+                  return (
+                    <div className="thumb-wrap" key={take.id}>
+                      <button type="button" className={`thumb${live ? " live" : ""}`} aria-current={selected === take.id}
+                        title={`${take.settings.size} · ${take.settings.seconds} s · ${new Date(take.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}`}
+                        onClick={() => { if (take.status === "succeeded") setSelected(take.id); else if (ACTIVE.has(take.status) && !busy) resume(take); }}>
+                        {take.status === "succeeded"
+                          ? <video src={`/api/takes/${take.id}/result.mp4#t=0.6`} muted playsInline preload="metadata" />
+                          : <img src={`/api/takes/${take.id}/${take.character}`} alt="" />}
+                        <span className={`st ${take.status === "succeeded" ? "ok" : live ? "live" : CANCELED.has(take.status) ? "" : "bad"}`} aria-hidden />
+                        <small><b>{take.settings.seconds} s</b> · {take.elapsedMs ? mmss(take.elapsedMs) : take.status === "running" && take.startedAt ? mmss(now - Date.parse(take.startedAt)) : statusLabel(take.status)}</small>
                       </button>
-                    )}
-                  </div>
-                ))}
+                      {!live && (
+                        <button type="button" className={`take-x${confirmDelete === take.id ? " armed" : ""}`} aria-label={t.delete_label} onClick={() => void removeTake(take.id)} onBlur={() => setConfirmDelete((current) => (current === take.id ? null : current))}>
+                          {confirmDelete === take.id ? t.delete_confirm : "×"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </div>
+          </section>
 
           <footer className="foot">
             <span>{t.built_with}</span>

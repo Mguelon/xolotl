@@ -98,7 +98,7 @@ a { color: inherit; text-decoration: none; }
   display: grid; align-content: start; gap: 16px;
   /* The screen's height, from the window's: the title, the screen and the take's buttons fit without scrolling. */
   --screen-pad: clamp(10px, 1.4vw, 18px);
-  --screen-h: clamp(320px, calc(100dvh - 330px), 780px);
+  --screen-h: clamp(300px, calc(100dvh - 470px), 760px);
 }
 .panel {
   grid-column: 2; grid-row: 1;
@@ -232,8 +232,15 @@ textarea::placeholder { color: var(--text-3); }
 .note { margin: 0; color: var(--text-3); font-size: 12.5px; }
 
 /* ── Stage ───────────────────────────────────────────── */
-.stage-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; padding: 2px 2px 0; }
+.stage-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; padding: 2px 2px 0; }
 .stage-title { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(20px, 2.1vw, 28px); letter-spacing: -0.01em; }
+.stage-side { display: flex; align-items: center; justify-content: flex-end; gap: 10px 16px; flex-wrap: wrap; }
+.live-pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent); background: var(--accent-soft);
+  color: var(--accent); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.live-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
 .stage-meta { margin: 0; display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-2); font-size: 13px; }
 .stage-meta b { color: var(--text); font-weight: 600; }
 /* The screen keeps its size whether it shows the examples, the chosen clip or the take: the page does not jump. */
@@ -283,8 +290,7 @@ textarea::placeholder { color: var(--text-3); }
   font-size: 12.5px; color: var(--text);
 }
 
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.bar .actions { width: 100%; justify-content: space-between; align-items: center; }
+.bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .bar .meta { color: var(--text-2); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
 .bar .meta b { color: var(--text); font-weight: 600; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
@@ -321,52 +327,64 @@ textarea::placeholder { color: var(--text-3); }
 .progress.error { border-color: color-mix(in oklch, var(--danger) 50%, transparent); }
 .progress.error .phase { color: var(--danger); }
 
-/* Examples */
-.examples { display: grid; gap: 12px; }
-.examples h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(20px, 2.2vw, 26px); letter-spacing: -0.01em; }
-.examples p { margin: 0; color: var(--text-2); font-size: 13.5px; max-width: 60ch; }
-.example-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 6px; }
-.example {
-  position: relative; display: grid; grid-template-columns: 1fr 72px; gap: 0; align-items: stretch;
-  border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: var(--bg-1);
-  text-align: left; transition: border-color .25s, transform .25s var(--ease-out);
+/* Stage: its kicker, the empty screen, the progress over the clip */
+.kicker {
+  margin: 0 0 4px; font-family: var(--font-display); font-weight: 700; font-size: 11px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--accent);
 }
-.example:hover { border-color: var(--accent-deep); transform: translateY(-2px); }
-.example img { width: 100%; height: 150px; object-fit: cover; }
-.example .who { object-position: top; border-left: 1px solid var(--line); }
-.example .name {
-  position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 6px;
-  background: color-mix(in oklch, var(--bg-0) 78%, transparent); backdrop-filter: blur(6px);
-  font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+.screen.working > .preview { filter: brightness(.42) saturate(.75); transition: filter .4s var(--ease-out); }
+.screen > .progress {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 32px)); padding: 20px 22px; gap: 12px;
+  background: color-mix(in oklch, var(--bg-1) 84%, transparent); backdrop-filter: blur(14px);
+  border-color: var(--line-strong); box-shadow: 0 30px 80px -30px oklch(0% 0 0 / .8);
 }
+.empty { display: grid; justify-items: center; gap: 8px; max-width: 440px; text-align: center; }
+.empty-mark {
+  width: 64px; height: 64px; margin-bottom: 6px; border-radius: 18px; display: grid; place-items: center;
+  background: var(--accent-soft); border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent);
+}
+.empty-mark .brand-mark { width: 30px; height: 30px; }
+.empty h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(19px, 1.8vw, 23px); }
+.empty p { margin: 0; color: var(--text-2); font-size: 14px; }
+.empty small { color: var(--text-3); font-size: 12.5px; }
+.empty .try { margin-top: 16px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; color: var(--text-3); font-size: 12.5px; }
+.chip {
+  padding: 5px 13px; border-radius: 999px; border: 1px solid var(--line-strong);
+  color: var(--text-2); font-size: 12.5px; transition: border-color .2s, color .2s, background .2s;
+}
+.chip:hover:not(:disabled) { border-color: var(--accent-deep); color: var(--text); background: var(--accent-soft); }
 
-/* Takes */
-.takes { display: grid; gap: 10px; }
+/* Takes: the session's strip */
+.session { display: grid; gap: 12px; padding: 14px 16px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg-1); }
+.session header { display: flex; align-items: baseline; gap: 10px; }
+.session h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.session header small { color: var(--text-3); font-size: 12px; }
 .takes-empty { color: var(--text-3); font-size: 13px; margin: 0; }
-.take-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-.take {
-  flex: none; display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center;
-  width: 230px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-1);
-  text-align: left; transition: border-color .2s, background .2s;
+.thumbs { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.thumb-wrap { position: relative; flex: none; }
+.thumb {
+  position: relative; display: grid; gap: 6px; width: 84px; padding: 4px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg-0); text-align: left;
+  transition: border-color .2s, transform .2s var(--ease-out);
 }
-.take:hover { border-color: var(--line-strong); background: var(--bg-2); }
-.take[aria-current="true"] { border-color: var(--accent-deep); background: var(--accent-soft); }
-.take img { width: 54px; height: 54px; object-fit: cover; object-position: top; border-radius: 6px; }
-.take .t1 { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
-.take .t2 { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.take .st { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; margin-top: 6px; }
-.take .st.ok { background: var(--accent); }
-.take .st.bad { background: var(--danger); }
-.rerun { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 400px; }
-.rerun small { flex-basis: 100%; color: var(--text-3); font-size: 11.5px; }
-.estimate { margin: -4px 0 0; color: var(--text-3); font-size: 12.5px; }
-.take-wrap { position: relative; }
-.take-x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; display: grid; place-items: center; font: inherit; font-size: 14px; line-height: 1; color: var(--text-3); background: var(--bg-1); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; opacity: 0; transition: opacity .15s ease-out; }
-@media (hover: none) { .take-x { opacity: .75; } }
-.take-wrap:hover .take-x, .take-x:focus-visible, .take-x.armed { opacity: 1; }
-.take-x.armed { width: auto; padding: 0 10px; font-size: 12px; color: var(--danger); border-color: var(--danger); }
-.take .st.live { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.thumb:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+.thumb[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.thumb img, .thumb video { width: 100%; aspect-ratio: 1; object-fit: cover; object-position: top; border-radius: 8px; background: var(--bg-2); }
+.thumb small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 3px 2px; font-size: 11px; line-height: 1.35; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.thumb small b { color: var(--text-2); font-weight: 600; }
+.thumb .st { position: absolute; top: 10px; left: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); box-shadow: 0 0 0 2px var(--bg-0); }
+.thumb .st.ok { background: var(--accent); }
+.thumb .st.bad { background: var(--danger); }
+.thumb .st.live { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.thumb.live img { filter: brightness(.6); }
 @keyframes pulse { 50% { opacity: .35; } }
+.take-x { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; display: grid; place-items: center; font: inherit; font-size: 14px; line-height: 1; color: var(--text-2); background: color-mix(in oklch, var(--bg-0) 80%, transparent); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; opacity: 0; transition: opacity .15s ease-out; }
+@media (hover: none) { .take-x { opacity: .75; } }
+.thumb-wrap:hover .take-x, .take-x:focus-visible, .take-x.armed { opacity: 1; }
+.take-x.armed { width: auto; padding: 0 10px; font-size: 12px; color: var(--danger); border-color: var(--danger); }
+.rerun { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.estimate { margin: -4px 0 0; color: var(--text-3); font-size: 12.5px; }
 
 /* Footer */
 .foot {
