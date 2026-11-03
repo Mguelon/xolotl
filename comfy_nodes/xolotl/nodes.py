@@ -10,10 +10,11 @@ Person Mask does, in a fraction of the time, XolotlReuseEncodes keeps the pack f
 and XolotlRecoverMasks finds the person where the tracking lost them as the pack does, with SAM loaded once a batch.
 XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
 XolotlMannequin turns the clip's person grey in the reference H3 copies the motion from, so it does not copy their looks.
+XolotlImageDetail lets Gemma read the character's picture at more image tokens than Generate Text gives it.
 
-Both nodes cut and decode the original file with the same ffmpeg options, so they see the same frames, and neither
-goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in the pack, so a long
-1080p clip never sits in memory as float tensors.
+XolotlFitVideo and XolotlRestoreSize cut and decode the original file with the same ffmpeg options, so they see the
+same frames, and neither goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in
+the pack, so a long 1080p clip never sits in memory as float tensors.
 """
 from __future__ import annotations
 
@@ -44,6 +45,18 @@ MATRICES = {"bt709": "bt709", "smpte170m": "bt601", "bt470bg": "bt601", "bt2020n
             "fcc": "fcc", "smpte240m": "smpte240m"}
 COLOR_FLAGS = (("-colorspace", "color_space"), ("-color_primaries", "color_primaries"),
                ("-color_trc", "color_transfer"), ("-color_range", "color_range"))
+# The ffprobe names the H.264 output can be tagged with, per flag (ffmpeg 7.1.5 and libx264, measured): a matrix only
+# if libswscale converts to it (gbr, ycgco, bt2020c, smpte2085, chroma-derived-nc/-c, ictcp, ipt-c2 stop the encode at
+# the last node), every primaries x264 writes (not ebu3213) and every transfer. Any other tag is left off.
+X264_TAGS = {
+    "color_space": {"bt709", "fcc", "bt470bg", "smpte170m", "smpte240m", "bt2020nc"},
+    "color_primaries": {"bt709", "bt470m", "bt470bg", "smpte170m", "smpte240m", "film", "bt2020", "smpte428",
+                        "smpte431", "smpte432"},
+    "color_transfer": {"bt709", "bt470m", "bt470bg", "smpte170m", "smpte240m", "linear", "log100", "log316",
+                       "iec61966-2-4", "bt1361e", "iec61966-2-1", "bt2020-10", "bt2020-12", "smpte2084", "smpte428",
+                       "arib-std-b67"},
+    "color_range": {"tv", "pc"},
+}
 CHUNK = 16  # frames per write to ffmpeg
 
 
@@ -201,8 +214,9 @@ class XolotlMapMasks:
     RETURN_NAMES = ("masks",)
     FUNCTION = "map"
     CATEGORY = "Xólotl"
-    DESCRIPTION = ("The first pass's masks moved onto the crop's canvas, so the person is tracked once: the mask is "
-                   "only a region to regenerate and composite, grown by 64 px afterwards.")
+    DESCRIPTION = ("The first pass's masks moved onto the crop's canvas, so the person is tracked once: grown by 64 px "
+                   "afterwards they are the region to regenerate and composite, and as they are, the person the grey "
+                   "mannequin paints.")
 
     def map(self, masks, first, fit):
         (w0, h0), (bx0, by0, bw0, bh0) = first["canvas"], first["box"]
@@ -260,6 +274,11 @@ class XolotlRestoreSize:
         matrix = MATRICES.get(color.get("color_space") or "", "bt601")
         rescale = f",scale={width}:{height}:flags=bicubic,setsar=1" if fit["rescale"] else ""
         blur = f",gblur=sigma={feather}" if feather > 0 else ""
+        # A clip without colour tags comes back without them: the swap's conversion would otherwise tag the whole
+        # picture with its matrix (BT.601 when the clip names none), and players would show it unlike the original.
+        untagged = all(color.get(key) in (None, "", "unknown", "reserved")
+                       for key in ("color_space", "color_primaries", "color_transfer"))
+        untag = ",setparams=colorspace=unknown:color_primaries=unknown:color_trc=unknown" if untagged else ""
         graph = (
             f"[0:v]{TIMELINE}{rescale},trim=end_frame={count},format=pix_fmts=yuv420p|yuvj420p[clip];"
             f"[1:v]crop={box_w}:{box_h}:{x}:{y},split[c][a];"
@@ -267,11 +286,10 @@ class XolotlRestoreSize:
             f"[a]alphaextract,scale={cw}:{ch}:flags=bilinear{blur}[alpha];"
             f"[rgb][alpha]alphamerge,scale=out_color_matrix={matrix}:out_range={'pc' if full_range else 'tv'},"
             "format=yuva420p[swap];"
-            f"[clip][swap]overlay=x={cx}:y={cy}:format=yuv420[out]"
+            f"[clip][swap]overlay=x={cx}:y={cy}:format=yuv420{untag}[out]"
         )
         # The clip is cut in the graph, not with -frames:v: that stops ffmpeg before the last audio packet is flushed.
-        tags = [part for flag, key in COLOR_FLAGS if color.get(key) not in (None, "", "unknown", "reserved")
-                for part in (flag, color[key])]
+        tags = [part for flag, key in COLOR_FLAGS if color.get(key) in X264_TAGS[key] for part in (flag, color[key])]
         audio = ["-map", "0:a:0", "-af", f"asetpts=PTS-STARTPTS,atrim=end={count / FPS:.6f}", "-c:a", "aac",
                  "-b:a", "192k"] if fit["audio"] else []
         output = _workdir() / f"restored-{uuid.uuid4().hex}.mp4"
@@ -396,10 +414,14 @@ def _pack_node(name):
 
 class XolotlRecoverMasks:
     """The pack's Recover Empty Frames with SAM loaded once a batch instead of once a frame. Where the tracking lost
-    the person, the pack runs SAM 3 Detect on that frame alone (threshold 0.35, two refinements, every detection) and
-    keeps the one its Select Person picks, and every call gets the model ready again. Here the pack's own node finds
-    those frames, SAM gets them in batches, which it still reads one by one with the same settings, and the pack's
-    Select Person picks on each, so the masks are the same. Same inputs and outputs, so it takes the pack's place."""
+    the person, the pack runs SAM 3 Detect on that frame alone (threshold 0.35, two refinements, and a single
+    detection, the one SAM is surest of: the text prompt asks for no more) and passes it through its Select Person,
+    and every call gets the model ready again. Here the pack's own node finds those frames, SAM gets them in batches,
+    which it still reads one by one with the same settings, and the pack's Select Person takes each, so the masks are
+    the same. Where SAM finds nobody, as when the person has left the frame, the pack stops the take with "SAM found no
+    subject", its message for a person missing from the first frame; here that frame keeps the tracking's empty mask
+    and is not counted as recovered, and Grow the Person's Mask then names the frames the person was missing from.
+    Same inputs and outputs, so it takes the pack's place."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -439,8 +461,13 @@ class XolotlRecoverMasks:
                                        "Frames (H3CharacterSwapRecoverMasks) in this node's place.")
                 at = 0
                 for frame, frame_boxes in zip(frames, boxes):
-                    result[frame] = pick(detections[at:at + len(frame_boxes)], **selection)[0][0].cpu()
-                    at += len(frame_boxes)
+                    these, at = detections[at:at + len(frame_boxes)], at + len(frame_boxes)
+                    try:
+                        result[frame] = pick(these, **selection)[0][0].cpu()
+                    except ValueError as error:  # nobody on this frame: it stays empty, for Grow to name
+                        if not str(error).startswith("SAM found no subject"):
+                            raise
+                        continue
                     recovered.append(frame)
         if recovered:
             logging.info("Xólotl: found the person again on %d empty frames in %.1f s, %d SAM calls", len(recovered),
@@ -526,8 +553,8 @@ class XolotlMannequin:
 class XolotlImageDetail:
     """Lets Gemma 4 see more of a picture. ComfyUI's Generate Text gives it 280 tokens per image, about 0.65 MP
     (comfy/text_encoders/gemma4.py, max_soft_tokens), where Renata's face is 72 px wide; its vision encoder takes up to
-    1120 (position_embedding_size 10240 patches, 9 per token). The CLIP comes back the same, with that budget for every
-    image it reads; wire it into Generate Text in place of the loader's."""
+    1120 (9 patches per token, placed by two position tables, one per axis, of 10240 places each). The CLIP comes back
+    the same, with that budget for every image it reads; wire it into Generate Text in place of the loader's."""
 
     @classmethod
     def INPUT_TYPES(cls):

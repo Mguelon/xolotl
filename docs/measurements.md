@@ -336,13 +336,7 @@ The same 5.17 s clip (124 frames), the same character, seed 904239 in runs 1 and
 
 What the time contains: SAM 3.1 detection and tracking of the person, VAE encoding of the source clip and audio, the Qwen3-VL text encoder, 8 diffusion steps over one 124-frame window, decoding and MP4 assembly. ComfyUI's dynamic VRAM keeps the whole card busy either way; the difference is how much has to stream from system RAM each step.
 
-Known limits (from the workflow's authors and confirmed here): the clip should be one continuous shot with the person visible in the first frame; with several people the largest one is swapped; the original soundtrack is kept, not regenerated; in run 1 the final frame shows the hand merged with a vase that sat inside the expanded mask.
-
-Reference point: Comfy's own Openjutsu app reports about 2 minutes for a 5 s part at 480p on a Comfy Developer Platform deployment (GPU not published), with a first-frame anchor made by GPT Image through Comfy Router. Xólotl runs the same character-swap graph without any closed model.
-
-What the time contains: SAM 3.1 detection and tracking of the person, VAE encoding of the source clip and audio, the Qwen3-VL text encoder, 8 diffusion steps over one 124-frame window, decoding and MP4 assembly.
-
-Known limits (from the workflow's authors and confirmed here): the clip should be one continuous shot with the person visible in the first frame; with several people the largest one is swapped; the original soundtrack is kept, not regenerated; in run 1 the final frame shows the hand merged with a vase that sat inside the expanded mask.
+Known limits (from the workflow's authors and confirmed here): the clip should be one continuous shot with the person visible in the first frame; the original soundtrack is kept, not regenerated; in run 1 the final frame shows the hand merged with a vase that sat inside the expanded mask. With several people, SAM takes the one it is most sure of in the part's first frame, and where tracking is lost it may pick someone else: the prompt `person` asks SAM 3 Detect for a single detection a frame (no `:N`), so Select Person's *largest* chooses among one, and each recovered frame gets its own top-scoring person.
 
 Reference point: Comfy's own Openjutsu app reports about 2 minutes for a 5 s part at 480p on a Comfy Developer Platform deployment (GPU not published), with a first-frame anchor made by GPT Image through Comfy Router. Xólotl runs the same character-swap graph without any closed model.
 

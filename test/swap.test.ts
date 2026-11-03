@@ -157,11 +157,12 @@ test("gives the result back at the clip's own size through Xólotl's nodes", () 
     assert.deepEqual(graph.restore.inputs.masks, ["110", 0], "the region the swap regenerated");
     assert.deepEqual(graph.restore.inputs.fit, ["fit", 1]);
     assert.deepEqual(graph["809"].inputs.video, ["restore", 0]);
-    // The first pass frames the person: whole clip on the canvas, the pack's tracking, the box, then the crop's fit.
+    // The first pass frames the person: whole clip on the canvas, the pack's tracking, the frames it lost recovered,
+    // the box around the person on every frame (recovered ones included), then the crop's fit.
     assert.deepEqual(graph.fit0.inputs, { resolution: graph.fit.inputs.resolution, video: ["trim", 0] });
     assert.deepEqual(graph["31a"].inputs, { ...graph["31"].inputs, video: ["fit0", 0] });
     assert.deepEqual(graph["105a"].inputs.images, ["31a", 0]);
-    assert.deepEqual(graph.box.inputs.masks, ["106a", 0]);
+    assert.deepEqual(graph.box.inputs.masks, ["107a", 0], "the box sees the recovered masks, as map does");
     assert.deepEqual(graph.box.inputs.fit, ["fit0", 1]);
     assert.deepEqual(graph.fit.inputs.crop, ["box", 0]);
     assert.equal(graph.box.class_type, "XolotlPersonBox");

@@ -111,7 +111,7 @@
   },
   "31": {
     "inputs": {
-      "resolution": 768,
+      "resolution": "480",
       "duration_seconds": 5.0,
       "video": [
         "fit",
@@ -614,7 +614,7 @@
   },
   "31a": {
     "inputs": {
-      "resolution": 768,
+      "resolution": "480",
       "duration_seconds": 5.0,
       "video": [
         "fit0",
@@ -724,7 +724,7 @@
       "max_aspect": 1.7778,
       "threshold": 0.5,
       "masks": [
-        "106a",
+        "107a",
         0
       ],
       "fit": [
