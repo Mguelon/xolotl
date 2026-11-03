@@ -5,7 +5,7 @@
 #     crop, the person's mask grown, the VAE without the pack's repeated encode, the result back at the clip's own
 #     size and place, the close-up of the character's face
 #     (OpenCV's YuNet, MIT, bundled in models/), the clip's person as a grey mannequin for the motion (after
-#     D3voz's H3GreyMannequins, MIT) and a bigger image budget for Gemma 4, which describes the character. Plain
+#     D3voz's H3GreyMannequins, MIT) and a bigger image budget for Gemma 4, which described the character before Qwen3-VL 8B. Plain
 #     Python, OpenCV and ffmpeg, which ComfyUI needs anyway.
 #   - Akatz Labs' h3_character_swap (GPL-3.0): detection, tracking, masked regeneration and assembly.
 #   - Veda (MIT), learned sparse attention for H3: optional; without it a take runs full attention, about 11 % slower

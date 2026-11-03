@@ -263,7 +263,7 @@ test("puts the description after its tag, and the direction after it", () => {
   assert.match(anchored, /<Picture 3> is a close-up .* Start from the first frame in <Picture 2>\. <Picture 1>: The character is tall\.$/);
 });
 
-test("inside ComfyUI the workflow writes the same prompt: Gemma describes <Picture 1>, Format Text adds the direction", () => {
+test("inside ComfyUI the workflow writes the same prompt: Qwen3-VL describes <Picture 1>, Format Text adds the direction", () => {
   assert.deepEqual(template["801"].inputs.prompt, ["prompt_trim", 0]);
   assert.deepEqual(template.prompt_trim.inputs, { string: ["prompt", 0], mode: "Both" });
   assert.equal(template.prompt.class_type, "StringFormat");
@@ -275,8 +275,8 @@ test("inside ComfyUI the workflow writes the same prompt: Gemma describes <Pictu
   assert.equal(template.describe.inputs.prompt, describe.gen.inputs.prompt, "the app's instruction");
   assert.equal(template.describe.inputs.sampling_mode, describe.gen.inputs.sampling_mode);
   assert.equal(template.describe_model.inputs.clip_name, describe.clip.inputs.clip_name, "the app's model");
-  assert.deepEqual(template.describe.inputs.clip, ["describe_detail", 0]);
-  assert.equal(template.describe_detail.inputs.image_tokens, describe.detail.inputs.image_tokens, "the app's image budget");
+  assert.deepEqual(template.describe.inputs.clip, ["describe_model", 0]);
+  assert.equal(template.describe_detail, undefined);
   const format = (a: string, b: string) => String(template.prompt.inputs.f_string).replace("{a}", a).replace("{b}", b).trim();
   const looks = "The character is a young woman with long wavy auburn hair.";
   assert.equal(format(looks, ""), swapPrompt({ description: looks, withFace: true }));
@@ -293,7 +293,7 @@ test("the app writes the prompt itself, with the description the user saw, so th
 test("the workflow for ComfyUI without the app is the app's default take, writing its own prompt", () => {
   const file = JSON.parse(readFileSync(new URL("../workflows/xolotl.api.json", import.meta.url), "utf8")) as Graph;
   assert.deepEqual(file, standaloneWorkflow(template), "write it again with scripts/standalone.ts after changing the template");
-  assert.deepEqual(file["801"].inputs.prompt, ["prompt_trim", 0], "Gemma and Format Text write the prompt");
+  assert.deepEqual(file["801"].inputs.prompt, ["prompt_trim", 0], "the describer and Format Text write the prompt");
   for (const id of PROMPT_NODES) assert.deepEqual(file[id], template[id], `${id} as in the template`);
   for (const id of ["mannequin", "anchor_image"]) assert.equal(file[id], undefined, `no ${id}, as the app by default`);
   assert.equal(file["803"].inputs.use_anchor, false);

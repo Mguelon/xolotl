@@ -7,7 +7,7 @@ export type SwapSize = keyof typeof SIZES;
 
 const MAX_SEED = 2 ** 32 - 1;
 const MAX_DIRECTION = 1200;
-const MAX_DESCRIPTION = 1200; // Gemma 4 E2B wrote 458-518 characters for each of the four bench pictures
+const MAX_DESCRIPTION = 1200; // Qwen3-VL 8B wrote 397-520 characters for each of the nine bench pictures
 const MAX_PERSON = 120;
 /**
  * The ref2v 4-step turbo LoRA's count: on the same clip and seed it kept the identity and colour of 8 and 20 steps
@@ -92,12 +92,12 @@ export function swapPrompt({ description = "", direction = "", person = "", with
 }
 
 /**
- * The nodes that write the prompt inside ComfyUI when the workflow runs without the app: Gemma 4 E2B describes the
- * character picture, seen at 1120 image tokens instead of Generate Text's 280 (XolotlImageDetail), Format Text puts the description after <Picture 1> and the direction after it, and Trim Text
+ * The nodes that write the prompt inside ComfyUI when the workflow runs without the app: Qwen3-VL 8B describes the
+ * character picture, Format Text puts the description after <Picture 1> and the direction after it, and Trim Text
  * takes off the space an empty direction leaves. The app writes the same prompt itself (swapPrompt), with the
  * description the user saw and could change, so a take does not describe the picture twice.
  */
-export const PROMPT_NODES = ["describe_model", "describe_detail", "describe", "direction", "prompt", "prompt_trim"] as const;
+export const PROMPT_NODES = ["describe_model", "describe", "direction", "prompt", "prompt_trim"] as const;
 
 function dropPromptNodes(graph: Graph) {
   for (const id of PROMPT_NODES) delete graph[id];

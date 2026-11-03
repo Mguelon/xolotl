@@ -11,31 +11,18 @@
   "clip": {
     "class_type": "CLIPLoader",
     "inputs": {
-      "clip_name": "gemma4_e2b_it_int8_convrot.safetensors",
+      "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
       "type": "stable_diffusion"
     },
     "_meta": {
-      "title": "Gemma 4 E2B (Comfy-Org/gemma-4, Apache 2.0)"
-    }
-  },
-  "detail": {
-    "class_type": "XolotlImageDetail",
-    "inputs": {
-      "clip": [
-        "clip",
-        0
-      ],
-      "image_tokens": 1120
-    },
-    "_meta": {
-      "title": "Gemma sees the picture at 1120 tokens, not 280 (Xólotl)"
+      "title": "Qwen3-VL 8B (Comfy-Org/Qwen-Image-2.1, Apache 2.0)"
     }
   },
   "gen": {
     "class_type": "TextGenerate",
     "inputs": {
       "clip": [
-        "detail",
+        "clip",
         0
       ],
       "prompt": "Describe the person in this picture so that a video model can draw them again. Write one paragraph of three sentences; the first starts with \"The character is\". First sentence: their apparent age and build, their skin tone, their hair colour, length and style, their eye colour, and features such as freckles, glasses or make-up. Second sentence: every garment on the upper body with its colour, type and fit, and how far it reaches on the body, for example a sweater that reaches the waistband of the jeans or a jacket that reaches the hips. Third sentence: the trousers, skirt or dress with its colour, type and fit. Do not mention the shoes or the feet, the background, the pose or the facial expression. For example: The character is a middle-aged man with a stocky build, olive skin, short curly black hair, brown eyes and a trimmed beard. He wears an open plaid flannel shirt over a white t-shirt, both reaching the belt of his trousers. His trousers are loose grey chinos.",

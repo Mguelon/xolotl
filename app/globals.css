@@ -193,7 +193,7 @@ textarea {
 }
 textarea:focus { border-color: var(--accent-deep); outline: none; }
 textarea.short { min-height: 64px; }
-/* The description shows whole, to be read before the take: Gemma's runs to six or seven lines here. */
+/* The description shows whole, to be read before the take: the describer's runs to six or seven lines here. */
 textarea.grow { min-height: 156px; max-height: 360px; field-sizing: content; }
 textarea::placeholder { color: var(--text-3); }
 

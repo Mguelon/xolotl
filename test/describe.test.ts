@@ -17,9 +17,9 @@ test("the describe workflow reads the picture and gives its text to a preview", 
   assert.equal(graph.img.class_type, "LoadImage");
   assert.equal(graph.gen.class_type, "TextGenerate");
   assert.deepEqual(graph.gen.inputs.image, ["img", 0]);
-  assert.deepEqual(graph.gen.inputs.clip, ["detail", 0], "through Xólotl's image detail");
-  assert.equal(graph.detail.class_type, "XolotlImageDetail");
-  assert.equal(graph.detail.inputs.image_tokens, 1120, "what let Gemma see the corset and the lace cuffs");
+  assert.deepEqual(graph.gen.inputs.clip, ["clip", 0]);
+  assert.equal(graph.clip.inputs.clip_name, "qwen3vl_8b_int8_convrot.safetensors", "the model that saw a bodybuilder's build, the corset and the cropped polo");
+  assert.equal(graph.detail, undefined, "Gemma's image budget is not needed: Qwen3-VL sizes the picture itself");
   assert.match(graph.gen.inputs.prompt, /^Describe the person in this picture/);
   assert.match(graph.gen.inputs.prompt, /how far it reaches on the body/, "the garments' length, what kept the sweater down");
   assert.match(graph.gen.inputs.prompt, /Do not mention the shoes or the feet/, "the feet pulled a take into showing them");
