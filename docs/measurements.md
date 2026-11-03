@@ -351,6 +351,32 @@ it is and no longer for the performer's proportions. The describer now names the
 trousers end (Qwen had written "falling to the ankles"); it still calls this bowl cut a "buzz cut" and this build
 "muscular", so a character this far from average is worth a word in the description box.
 
+## The character creator on one model (2026-11-02)
+
+The creator makes the head, then the full body around that head (`workflows/character-head.api.json` and
+`workflows/character-body.api.json`). The question was whether Qwen-Image 2.1 Turbo alone could do both, generating and
+editing with the same 7.3 GB file as in its official templates, or whether the body needs Qwen-Image-Edit 2511 with
+Lightning, as in atelier. `scripts/creator-bench.py` ran both on two subjects, seed 20261103, on the RTX A4000:
+- a person, described as the creator's buttons write her;
+- an anthropomorphic black sheep in the 3D-animated style, the mascot case.
+
+| Step | Qwen-Image 2.1 Turbo, 8 steps | 2511 Q4_K_S + Lightning, 8 steps (atelier) |
+| --- | --- | --- |
+| Four heads, 1024², one batch | 40.8 s (person, includes loading), 32.9 s (sheep) | — |
+| Body around the first head, 1024×1792 | 23.4 s (person), 22.6 s (sheep) | 84.0 s (person), 72.0 s (sheep) |
+
+What the pictures show (`hoja.jpg` and `caras-de-cerca.jpg` in the measurements folder):
+- **Identity.** 2.1 keeps the head's face in the body: the same features, freckles and hair. 2511 draws a similar face,
+  which is why atelier pastes the designed face back with FaceWarp.
+- **The sheep.** 2.1 gives it black, hoof-like hands. 2511 gives it human hands.
+- **Clothes.** Both follow the description.
+
+2.1 Turbo also takes about a third of 2511's time. The creator uses Qwen-Image 2.1 Turbo for both steps, and no face
+paste:
+- **Downloads.** A user adds the 7.3 GB model and its 0.7 GB VAE. Its text encoder is the swap's describer, Qwen3-VL 8B,
+  which Xólotl already installs.
+- **Licence.** Dropping FaceWarp also drops its insightface models, which are for non-commercial research only.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.

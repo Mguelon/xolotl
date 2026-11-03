@@ -538,6 +538,18 @@ textarea::placeholder { color: var(--text-3); }
 .style-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--bg-2); }
 .style-card:hover { border-color: var(--line-strong); color: var(--text); }
 .style-card[aria-pressed="true"] { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 3px var(--accent-soft); }
+.drop {
+  position: relative; display: grid; place-items: center; min-height: 132px; padding: 14px; border-radius: var(--radius);
+  border: 1px dashed var(--line-strong); background: var(--bg-0); text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.drop:hover { border-color: var(--accent-deep); background: var(--bg-2); }
+.drop span { display: grid; gap: 4px; }
+.drop b { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.drop small { color: var(--text-3); font-size: 12px; }
+.drop.filled { padding: 0; overflow: hidden; border-style: solid; }
+.drop.filled img { width: 100%; max-height: 260px; object-fit: contain; background: var(--bg-0); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .said summary { cursor: pointer; color: var(--text-2); font-size: 12.5px; }
 .said summary:hover { color: var(--text); }
 .said p { margin: 8px 0 2px; max-height: 128px; overflow: auto; scrollbar-width: thin; color: var(--text-2); font-size: 12px; line-height: 1.5; }

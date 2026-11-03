@@ -18,6 +18,7 @@ function Control({ group, value, lang, t, note, onChange }: {
 }) {
   const label = word(group, lang);
   const hint = group.hint ? word(group.hint, lang) : null;
+  if (group.kind === "image") return null; // the creator draws it: it holds a file, not a pick
 
   if (group.kind === "style") {
     return (
@@ -81,6 +82,20 @@ function Control({ group, value, lang, t, note, onChange }: {
   );
 }
 
+/** The picture of a character that already exists, dropped or chosen; shown as it is. */
+function PictureDrop({ label, hint, drop, url, onPick }: { label: string; hint: string | null; drop: string; url: string | null; onPick: (file: File | null) => void }) {
+  return (
+    <div className="opt-group">
+      <span className="legend">{label}</span>
+      <label className={`drop${url ? " filled" : ""}`}>
+        {url ? <img src={url} alt="" /> : <span><b>{drop}</b><small>PNG · JPEG · WebP</small></span>}
+        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => onPick(event.target.files?.[0] ?? null)} />
+      </label>
+      {hint && <small className="opt-hint">{hint}</small>}
+    </div>
+  );
+}
+
 /**
  * The character creator: the head, then the body and its clothes, then the sheet (atelier's steps), each step with its
  * buttons on the right (Higgsfield's and Cheapsfield's way of choosing), the step's picture and its versions on the left,
@@ -91,8 +106,17 @@ export function Creator() {
   const { lang, t, toggle } = useLang();
   const [step, setStep] = useState<Step>("head");
   const [picks, setPicks] = useState<Record<Step, Picks>>(() => ({ head: initialPicks("head"), body: initialPicks("body"), sheet: initialPicks("sheet") }));
-  // Each step's versions and the one chosen; filled once generation is wired to ComfyUI.
-  const [versions] = useState<Record<Step, Version[]>>({ head: [], body: [], sheet: [] });
+  // Each step's versions and the one chosen. Generation fills them once it is wired to ComfyUI; a picture of your own is
+  // the head's first version as it is.
+  const [versions, setVersions] = useState<Record<Step, Version[]>>({ head: [], body: [], sheet: [] });
+  const [picture, setPicture] = useState<File | null>(null);
+  const [pictureUrl, setPictureUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!picture) { setPictureUrl(null); return; }
+    const url = URL.createObjectURL(picture);
+    setPictureUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [picture]);
   const [chosen, setChosen] = useState<Record<Step, string | null>>({ head: null, body: null, sheet: null });
   const [ask, setAsk] = useState("");
   const [notice, setNotice] = useState("");
@@ -107,13 +131,17 @@ export function Creator() {
   const the: Record<Step, string> = { head: t.cr_the_head, body: t.cr_the_body, sheet: t.cr_the_sheet };
 
   const current = versions[step].find((v) => v.id === chosen[step]) ?? versions[step].at(-1) ?? null;
-  const needs = step === "body" && versions.head.length === 0 ? t.cr_needs_head
+  const own = picks.head.start === "picture";
+  const needs = step === "head" && own && !picture ? t.cr_need_picture
+    : step === "body" && versions.head.length === 0 ? t.cr_needs_head
     : step === "sheet" && versions.body.length === 0 ? t.cr_needs_body : "";
   const heads = headCount(picks.head);
-  const eta = step === "head"
+  const eta = step === "head" && own ? t.cr_eta_picture
+    : step === "head"
     ? t.cr_eta_head.replace("{n}", String(heads)).replace("{m}", String(Math.max(1, Math.round((SECONDS.headLoad + heads * SECONDS.head) / 60))))
     : t.cr_eta_minutes.replace("{m}", String(Math.round((step === "body" ? SECONDS.body : picks.sheet.kind === "full" ? SECONDS.sheetFull : SECONDS.sheetSimple) / 60)));
-  const said = step === "head" ? headPrompt(picks.head) : step === "body" ? describeBody(picks.body) : "";
+  const said = step === "head" ? headPrompt(picks.head) : step === "body" ? describeBody(picks.body, picks.head) : "";
+  const shown = GROUPS[step].filter((group) => !group.when || group.when(picks[step]));
 
   const set = (id: string, value: Value) => setPicks((all) => ({ ...all, [step]: { ...all[step], [id]: value } }));
   // Each step opens at the top of its buttons, wherever the last one was scrolled to.
@@ -122,6 +150,14 @@ export function Creator() {
 
   function run() {
     if (needs) return;
+    if (step === "head" && own && pictureUrl) {
+      // Your own character is the head as it is: the body and the sheet are drawn from it, in its style.
+      const version = { id: `own-${Date.now()}`, url: pictureUrl };
+      setVersions((all) => ({ ...all, head: [...all.head, version] }));
+      setChosen((all) => ({ ...all, head: version.id }));
+      setNotice("");
+      return;
+    }
     setNotice(t.cr_not_wired);
   }
   function send(event?: FormEvent) {
@@ -155,7 +191,10 @@ export function Creator() {
             ))}
           </div>
           <div className="panel-body" role="tabpanel" ref={body}>
-            {GROUPS[step].map((group) => (
+            {shown.map((group) => group.kind === "image" ? (
+              <PictureDrop key={`${step}-${group.id}`} label={word(group, lang)} hint={group.hint ? word(group.hint, lang) : null}
+                drop={t.cr_drop} url={pictureUrl} onPick={setPicture} />
+            ) : (
               <Control key={`${step}-${group.id}`} group={group} value={picks[step][group.id]} lang={lang} t={t}
                 note={step === "sheet" && group.id === "kind" ? word(SHEET_KINDS[String(picks.sheet.kind)] ?? SHEET_KINDS.simple, lang) : undefined}
                 onChange={(value) => set(group.id, value)} />
@@ -170,7 +209,7 @@ export function Creator() {
             )}
             <p className="estimate">{needs || eta}</p>
             <button type="button" className="run" disabled={!!needs} onClick={run}>
-              <span>{runLabel[step]}</span><kbd>Ctrl ↵</kbd>
+              <span>{step === "head" && own ? t.cr_run_picture : runLabel[step]}</span><kbd>Ctrl ↵</kbd>
             </button>
           </div>
         </aside>

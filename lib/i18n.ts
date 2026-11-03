@@ -150,6 +150,10 @@ const en = {
   cr_the_head: "the head",
   cr_the_body: "the body",
   cr_the_sheet: "the sheet",
+  cr_run_picture: "Use this picture",
+  cr_eta_picture: "It becomes the head as it is; the body and the sheet keep its style.",
+  cr_need_picture: "Choose the picture of your character first.",
+  cr_drop: "Drop or choose a picture",
 };
 
 const es: typeof en = {
@@ -302,6 +306,10 @@ const es: typeof en = {
   cr_the_head: "la cabeza",
   cr_the_body: "el cuerpo",
   cr_the_sheet: "la hoja",
+  cr_run_picture: "Usar esta imagen",
+  cr_eta_picture: "Queda como la cabeza tal cual; el cuerpo y la hoja conservan su estilo.",
+  cr_need_picture: "Primero escoge la imagen de tu personaje.",
+  cr_drop: "Suelta o escoge una imagen",
 };
 
 export const STRINGS: Record<Lang, typeof en> = { en, es };
