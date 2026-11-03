@@ -68,7 +68,7 @@
    "batch_size": 1
   },
   "_meta": {
-   "title": "full-body canvas"
+   "title": "canvas: 1024×1792 for the body, the picture's own size for a change"
   }
  },
  "7": {
@@ -158,7 +158,7 @@
     "12",
     0
    ],
-   "filename_prefix": "xolotl/character/body"
+   "filename_prefix": "xolotl/character/edit"
   }
  },
  "20": {
@@ -167,7 +167,7 @@
    "image": "head.png"
   },
   "_meta": {
-   "title": "the head"
+   "title": "the picture to work from"
   }
  }
 }

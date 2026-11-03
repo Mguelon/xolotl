@@ -154,6 +154,13 @@ const en = {
   cr_eta_picture: "It becomes the head as it is; the body and the sheet keep its style.",
   cr_need_picture: "Choose the picture of your character first.",
   cr_drop: "Drop or choose a picture",
+  cr_working_heads: "Making the heads…",
+  cr_working_body: "Making the body…",
+  cr_working_edit: "Making the change…",
+  cr_pick: "Pick the head you like",
+  cr_pick_hint: "The others stay among the versions.",
+  cr_failed: "It did not finish:",
+  cr_unnamed: "Unnamed",
 };
 
 const es: typeof en = {
@@ -310,6 +317,13 @@ const es: typeof en = {
   cr_eta_picture: "Queda como la cabeza tal cual; el cuerpo y la hoja conservan su estilo.",
   cr_need_picture: "Primero escoge la imagen de tu personaje.",
   cr_drop: "Suelta o escoge una imagen",
+  cr_working_heads: "Haciendo las cabezas…",
+  cr_working_body: "Haciendo el cuerpo…",
+  cr_working_edit: "Haciendo el cambio…",
+  cr_pick: "Escoge la cabeza que te guste",
+  cr_pick_hint: "Las demás se quedan en las versiones.",
+  cr_failed: "No terminó:",
+  cr_unnamed: "Sin nombre",
 };
 
 export const STRINGS: Record<Lang, typeof en> = { en, es };

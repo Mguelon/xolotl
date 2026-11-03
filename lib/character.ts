@@ -359,7 +359,7 @@ export function describeHead(picks: Picks): string {
     const color = choiceOf("head", "coat_color", picks.coat_color)?.say;
     const covered = coat ? `${color ? `${color} ` : ""}${coat}` : color ? `${color} coloring` : "";
     const traits = [covered, choiceOf("head", "eyes", picks.eyes)?.say].filter((t): t is string => !!t);
-    const who = picks.stance === "natural" ? species : `anthropomorphic ${species} character that stands upright on two legs like a person`;
+    const who = picks.stance === "natural" ? species : `anthropomorphic ${species} character`;
     return tidy(`an original, fictional ${who}${traits.length ? `, with ${list(traits)}` : ""}${tail}`);
   }
   if (kind === "alien") {
@@ -404,7 +404,7 @@ export function headPrompt(picks: Picks): string {
 }
 
 /** The body around the head: build, height and clothes. Own words for the clothes win over the clothes style. An animal
- *  that stands like a person says so again here, where its legs are drawn. */
+ *  that stands like a person says so here, where its legs are drawn: said in the head's prompt, it drew the whole body. */
 export function describeBody(picks: Picks, head?: Picks): string {
   const upright = head && head.start !== "picture" && head.kind === "animal" && head.stance !== "natural"
     ? "Standing upright on two legs like a person." : "";
@@ -424,3 +424,32 @@ export function describeBody(picks: Picks, head?: Picks): string {
 
 /** How many heads a round makes. */
 export const headCount = (picks: Picks) => Math.max(1, Math.min(4, Number(picks.count) || 4));
+
+/** How the whole figure stands for its full-body picture: upright and facing the viewer, as the swap's reference wants
+ *  it, unless the character has no legs to stand on or stays on four of them. */
+function pose(head: Picks): string {
+  const own = head.start === "picture";
+  const kind = String(head.kind || "person");
+  if (!own && kind === "animal" && head.stance === "natural") return "In its natural stance, side-on enough to show its whole body,";
+  if (!own && kind === "hybrid" && (head.hybrid === "merfolk" || head.hybrid === "naga")) return "Upright on its tail, facing the viewer,";
+  if (!own && kind === "alien" && head.alien_legs === "0") return "Floating upright, facing the viewer,";
+  return "Standing upright in a relaxed natural pose facing the viewer, arms resting at the sides,";
+}
+
+/** The body around the chosen head (<image1>), on a 1024×1792 canvas: what workflows/character-edit.api.json reads.
+ *  Measured 2026-11-02 (docs/measurements.md): 23 s with Qwen-Image 2.1 Turbo, the head's face kept. */
+export function bodyPrompt(head: Picks, body: Picks): string {
+  const who = head.start === "picture"
+    ? (text(head.what, 120) ? ` (${text(head.what, 120)})` : "")
+    : `: ${describeHead(head)}`;
+  return tidy(`Full-body image of the same character as in <image1>${who}. ${describeBody(body, head)} ${pose(head)} the whole `
+    + "figure visible from head to toe with space above and below it. Plain light grey seamless studio background, soft "
+    + "even studio lighting. Keep exactly the same face, head, hair, colors, art style and rendering as <image1>.");
+}
+
+/** A change asked in the box under the picture: only that, on the picture it is asked of (atelier's SOLO_ESO). */
+export function editPrompt(instruction: string): string {
+  const asked = instruction.trim().replace(/\s+/g, " ").replace(/[.\s]+$/, "").slice(0, 400);
+  return `${asked}. Change only that and keep everything else exactly as it is in <image1>: the same character, face, `
+    + "pose, framing, art style, background and lighting.";
+}

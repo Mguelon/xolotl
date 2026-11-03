@@ -8,7 +8,7 @@ the creator's buttons write her today, and an anthropomorphic black sheep (the m
 two legs like the person in the clip it will replace).
 
 For each subject: four heads with workflows/character-head.api.json, then the first head's full body with
-workflows/character-body.api.json (2.1 Turbo editing, on a 1024×1792 canvas) and with atelier's grafo_2511 (2511 Q4_K_S +
+workflows/character-edit.api.json (2.1 Turbo editing, on a 1024×1792 canvas) and with atelier's grafo_2511 (2511 Q4_K_S +
 Lightning 8 steps, same canvas, its own body prompts). Writes the pictures, a sheet of them side by side and bench.json
 (prompts, seeds, ComfyUI seconds per run) to CREATOR_BENCH_OUT.
 """
@@ -81,7 +81,7 @@ def keep(paths, name):
 
 def main():
     head_wf = json.loads((ROOT / "workflows/character-head.api.json").read_text())
-    body_wf = json.loads((ROOT / "workflows/character-body.api.json").read_text())
+    body_wf = json.loads((ROOT / "workflows/character-edit.api.json").read_text())
     report = {"seed": SEED, "runs": []}
     heads = {}
     for name, subject in SUBJECTS.items():
