@@ -1,5 +1,5 @@
-import { AppRunner } from "../components/app-runner";
+import { Landing } from "../components/landing";
 
 export default function Page() {
-  return <AppRunner />;
+  return <Landing />;
 }

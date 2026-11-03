@@ -17,8 +17,8 @@
   --radius: 14px;
   --radius-s: 8px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --font-display: "Syne", system-ui, sans-serif;
-  --font-sans: "Instrument Sans", system-ui, sans-serif;
+  /* --font-display and --font-sans come from next/font (app/layout.tsx), on <html>: set here they would win and name
+     families the browser never loaded. */
   color-scheme: dark;
 }
 
@@ -62,7 +62,15 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.tagline { margin: 0; color: var(--text-2); font-size: 14px; max-width: 48ch; }
+/* The two tools, beside the mark: the page you are on is lit. */
+.nav { display: flex; gap: 4px; justify-self: start; }
+.nav a {
+  padding: 7px 13px; border-radius: 999px; color: var(--text-2);
+  font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .04em;
+  transition: color .2s, background .2s, box-shadow .2s;
+}
+.nav a:hover { color: var(--text); }
+.nav a[aria-current="page"] { color: var(--text); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .top-right { display: flex; align-items: center; gap: 10px; }
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
@@ -120,14 +128,22 @@ a { color: inherit; text-decoration: none; }
   .stage { --screen-h: clamp(260px, 64vh, 640px); }
   .panel { grid-template-rows: auto auto; }
   .top { grid-template-columns: auto 1fr; row-gap: 10px; }
-  .tagline { grid-column: 1 / -1; grid-row: 2; }
+  .nav { grid-column: 1 / -1; grid-row: 2; }
   .top-right { justify-self: end; }
   .pill .gpu { display: none; }
 }
 @media (max-width: 480px) {
+  .top { column-gap: 10px; }
+  .brand { gap: 9px; }
+  .brand-mark { width: 25px; height: 25px; }
+  .brand-name { font-size: 17px; letter-spacing: .04em; }
   .top-right { gap: 6px; }
   .top-right .ghost { padding-left: 9px; padding-right: 9px; }
   .top-right .ghost .label { display: none; }
+}
+@media (max-width: 380px) {
+  .brand-mark { width: 22px; height: 22px; }
+  .brand-name { font-size: 15px; }
 }
 
 .eyebrow {
@@ -393,6 +409,86 @@ textarea::placeholder { color: var(--text-3); }
   color: var(--text-3); font-size: 12.5px;
 }
 .foot b { color: var(--text-2); font-weight: 600; }
+
+/* ── Home: the way in, two doors ─────────────────────── */
+.home { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
+.home-main {
+  width: min(1320px, 100%); margin: 0 auto; display: grid; align-content: start;
+  gap: clamp(20px, 2.4vw, 32px); padding: clamp(18px, 2.4vw, 34px) clamp(16px, 3vw, 40px) clamp(20px, 3vw, 36px);
+}
+.hero { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 12px clamp(24px, 5vw, 80px); align-items: end; }
+.hero .kicker { grid-column: 1 / -1; margin: 0; }
+.hero h1 {
+  margin: 0; font-family: var(--font-display); font-weight: 800; text-wrap: balance;
+  font-size: clamp(30px, 3.9vw, 58px); line-height: 1; letter-spacing: -0.03em;
+}
+.hero .lede { margin: 0 0 .35em; max-width: 44ch; color: var(--text-2); font-size: clamp(15px, 1.12vw, 17px); line-height: 1.6; }
+
+/* The doors share their rows (subgrid): pictures on one line, words on the next, whatever each one holds. */
+.doors { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); grid-template-rows: auto auto; gap: 0 clamp(14px, 1.8vw, 24px); }
+.door {
+  grid-row: span 2; display: grid; grid-template-rows: subgrid; row-gap: 0;
+  border: 1px solid var(--line); border-radius: 18px; background: var(--bg-1); overflow: hidden;
+  transition: border-color .3s var(--ease-out), box-shadow .3s var(--ease-out);
+}
+.door:hover { border-color: var(--line-strong); box-shadow: 0 40px 80px -50px oklch(0% 0 0 / .8); }
+.door-media { position: relative; min-height: 0; display: grid; background: var(--bg-0); border-bottom: 1px solid var(--line); }
+.door .frame.twin { width: 100%; border: 0; border-radius: 0; }
+.door-text { display: grid; align-content: start; gap: 8px; padding: clamp(16px, 1.4vw, 20px) clamp(18px, 2vw, 28px) clamp(18px, 1.7vw, 24px); }
+.door-kicker {
+  margin: 0; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent);
+}
+.door h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(21px, 1.9vw, 28px); line-height: 1.1; letter-spacing: -0.015em; }
+.door h2 a { transition: color .2s; }
+.door h2 a:hover { color: var(--accent); }
+.door p { margin: 0; color: var(--text-2); max-width: 56ch; }
+.door-foot { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; margin-top: 6px; }
+.door-foot small { color: var(--text-3); font-size: 12.5px; }
+.door-cta {
+  display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: var(--radius-s);
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--font-display); font-weight: 800; font-size: 13.5px; letter-spacing: .06em; text-transform: uppercase;
+  transition: filter .2s, transform .15s var(--ease-out);
+}
+.door-cta span { transition: transform .3s var(--ease-out); }
+.door-cta:hover { filter: brightness(1.06); }
+.door-cta:hover span, .door:hover .door-cta span { transform: translateX(4px); }
+.door-cta:active { transform: scale(.985); }
+.door-cta.quiet { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.door-cta.quiet:hover { filter: none; box-shadow: inset 0 0 0 1px var(--accent-deep); background: var(--accent-soft); }
+.soon {
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong);
+  font-family: var(--font-sans); font-weight: 600; font-size: 11px; letter-spacing: .02em; text-transform: none; color: var(--text-2);
+}
+/* The cast: the pictures fill the row the swap's clip sets (size containment keeps them from stretching it). */
+.cast { contain: size; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
+.cast figure, .waiting-cast figure { position: relative; margin: 0; overflow: hidden; background: var(--bg-0); }
+.cast img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; transition: transform .7s var(--ease-out); }
+.door.create:hover .cast img { transform: scale(1.035); }
+.cast figcaption, .waiting-cast figcaption {
+  position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 6px;
+  background: color-mix(in oklch, var(--bg-0) 76%, transparent); backdrop-filter: blur(6px);
+  font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text);
+}
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 30px; color: var(--text-2); font-size: 13.5px; }
+.facts li { display: inline-flex; align-items: center; gap: 10px; }
+.facts li::before { content: ""; width: 6px; height: 6px; background: var(--accent); transform: rotate(45deg); flex: none; }
+.home-foot { width: min(1320px, 100%); margin: 0 auto; padding: 16px clamp(16px, 3vw, 40px) 22px; }
+
+/* The creator's room while it is being built */
+.waiting { place-items: center; align-content: center; }
+.waiting .empty { max-width: 520px; gap: 12px; }
+.waiting-cast { display: grid; grid-template-columns: repeat(2, 132px); gap: 10px; margin: 12px 0 6px; }
+.waiting-cast figure { border-radius: 12px; border: 1px solid var(--line); aspect-ratio: 3 / 4; }
+.waiting-cast img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+
+@media (max-width: 960px) {
+  .hero { grid-template-columns: 1fr; }
+  .doors { grid-template-columns: 1fr; grid-template-rows: none; gap: 16px; }
+  .door { grid-row: auto; grid-template-rows: auto auto; }
+  .cast { contain: none; aspect-ratio: 4 / 3; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

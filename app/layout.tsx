@@ -19,9 +19,9 @@ const sans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Xólotl · character swap on your own GPU",
+  title: { default: "Xólotl · your character, in any video", template: "%s · Xólotl" },
   description:
-    "Swap the person in a video for the character in one image. MiniMax H3 + SAM 3.1 on your own ComfyUI, fully open weights, nothing leaves your machine.",
+    "Make a character and swap it into a real clip. MiniMax H3 + SAM 3.1 on your own ComfyUI, fully open weights, nothing leaves your machine.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

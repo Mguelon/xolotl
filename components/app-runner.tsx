@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Progress } from "@comfyorg/sdk";
 import { EXAMPLES, type Example } from "../lib/examples";
-import { STRINGS, type Lang } from "../lib/i18n";
+import { counted } from "../lib/i18n";
+import { useLang } from "../lib/use-lang";
 import { jobErrorMessage } from "../lib/job-error";
 import { CHARACTER_TAG, DEFAULT_STEPS, MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
 import { estimateMinutes } from "../lib/estimates";
 import type { TakeMeta } from "../lib/takes";
 import type { Stage, StageName } from "../lib/stage";
 import { Mark } from "./mark";
+import { TopBar } from "./top-bar";
 import { Twin } from "./twin";
 
 type Output = { id: string; name: string; type: string; url: string };
@@ -19,16 +21,11 @@ type Job = {
   gpu?: { utilization: number | null; vramUsedGb: number | null; vramTotalGb: number | null } | null;
   stage?: Stage | null; remainingSeconds?: number | null;
 };
-type Health = {
-  ok: boolean; proxy: { ok: boolean }; comfyui: { ok: boolean; version: string | null; gpu: string | null; vramGb: number | null };
-  missingNodes: string[]; missingModels: string[]; notes: string[];
-};
 type Phase = "idle" | "submitting" | "running";
 
 const ACTIVE = new Set(["queued", "running", "pending", "in_progress", "starting", "canceling"]);
 const STAGES: StageName[] = ["prepare", "encode", "sample", "finish"];
 const CANCELED = new Set(["canceled", "cancelled"]);
-const REPO = "https://github.com/Mguelon/xolotl";
 
 function useObjectUrl(file: Blob | null) {
   const url = useMemo(() => (file ? URL.createObjectURL(file) : undefined), [file]);
@@ -61,7 +58,6 @@ const mmss = (ms: number) => {
 };
 
 /** A count with the word that goes with it: "1 falta", "2 faltan". */
-const counted = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 function Tile(props: {
   kind: "clip" | "character"; label: string; hint: string; accept: string; disabled: boolean;
@@ -93,9 +89,7 @@ function Tile(props: {
 }
 
 export function AppRunner() {
-  const [lang, setLang] = useState<Lang>("en");
-  const t = STRINGS[lang];
-  const [health, setHealth] = useState<Health | null>(null);
+  const { t, toggle: toggleLang } = useLang();
   const [video, setVideo] = useState<File | null>(null);
   const [duration, setDuration] = useState(0);
   const [character, setCharacter] = useState<File | null>(null);
@@ -122,12 +116,6 @@ export function AppRunner() {
   const busy = phase !== "idle";
   const active = !!job && ACTIVE.has(job.status);
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("xolotl-lang");
-    if (saved === "en" || saved === "es") setLang(saved);
-  }, []);
-  const toggleLang = () => setLang((current) => { const next = current === "en" ? "es" : "en"; window.localStorage.setItem("xolotl-lang", next); return next; });
-
   const loadTakes = useCallback(async () => {
     try { const body = await (await fetch("/api/takes")).json() as { takes: TakeMeta[] }; setTakes(body.takes); } catch { /* the strip just stays as it was */ }
   }, []);
@@ -140,14 +128,6 @@ export function AppRunner() {
     if (running) resume(running);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [takes, job, phase]);
-
-  useEffect(() => {
-    let stop = false;
-    const read = async () => { try { const body = await (await fetch("/api/health")).json() as Health; if (!stop) setHealth(body); } catch { if (!stop) setHealth(null); } };
-    void read();
-    const timer = window.setInterval(read, 30000);
-    return () => { stop = true; window.clearInterval(timer); };
-  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -344,22 +324,7 @@ export function AppRunner() {
 
   return (
     <div className="app">
-      <header className="top">
-        <a className="brand" href="/" aria-label="Xólotl"><Mark /><span className="brand-name">Xólotl</span></a>
-        <p className="tagline">{t.tagline}</p>
-        <div className="top-right">
-          <span className={`pill ${health ? (health.ok ? "ok" : "bad") : ""}`} title={health ? [...health.missingNodes, ...health.missingModels, ...health.notes].join("\n") : ""}>
-            <span className="dot" aria-hidden />
-            {!health ? t.health_checking
-              : !health.proxy.ok ? t.health_proxy
-              : !health.comfyui.ok ? t.health_bad
-              : health.ok ? <><strong>{t.health_ok}</strong>{health.notes.length > 0 ? ` · ${counted(health.notes.length, t.health_adapted_one, t.health_adapted_many)}` : ""}<span className="gpu">{health.comfyui.gpu ? ` · ${health.comfyui.gpu}${health.comfyui.vramGb ? ` ${health.comfyui.vramGb} GB` : ""}` : ""}</span></>
-              : counted(health.missingNodes.length + health.missingModels.length, t.health_missing_one, t.health_missing_many)}
-          </span>
-          <button type="button" className="ghost lang" onClick={toggleLang} aria-label="Language">{t.lang}</button>
-          <a className="ghost" href={REPO} target="_blank" rel="noreferrer" aria-label={t.source}><span className="label">{t.source} </span>↗</a>
-        </div>
-      </header>
+      <TopBar t={t} onLang={toggleLang} area="swap" />
 
       <main className="workspace">
         <aside className="panel" aria-label={t.shot}>

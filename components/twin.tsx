@@ -6,14 +6,19 @@ type Props = {
   original: string; swap: string; labels: { original: string; swap: string; play: string; pause: string };
   /** Where the take starts in the original clip, in seconds: the original runs that far ahead of the swap. */
   offset?: number;
+  /** A muted loop for showing off a take: it plays while `active` is true (the pointer over its card), or from its button. */
+  showcase?: boolean;
+  active?: boolean;
+  /** Where the divider starts, in % of the width from the left. */
+  start?: number;
 };
 
 /** Original and swap in one frame. The swap sits on top, clipped at the divider; both videos run in step. */
-export function Twin({ original, swap, labels, offset = 0 }: Props) {
+export function Twin({ original, swap, labels, offset = 0, showcase = false, active = false, start = 50 }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const a = useRef<HTMLVideoElement>(null);
   const b = useRef<HTMLVideoElement>(null);
-  const [x, setX] = useState(50);
+  const [x, setX] = useState(start);
   const [playing, setPlaying] = useState(false);
   /** The clip's own width / height, so a vertical or square take is not boxed into 16:9. */
   const [ratio, setRatio] = useState<number | null>(null);
@@ -25,6 +30,8 @@ export function Twin({ original, swap, labels, offset = 0 }: Props) {
     const sync = () => {
       const at = lead.currentTime + offset;
       if (Math.abs(follow.currentTime - at) > 0.08) follow.currentTime = at;
+      // A looping swap starts over while the original may have stopped at its end: start it again with it.
+      if (!lead.paused && follow.paused) void follow.play().catch(() => {});
     };
     const onPlay = () => { void follow.play().catch(() => {}); setPlaying(true); };
     const onPause = () => { follow.pause(); setPlaying(false); };
@@ -41,6 +48,12 @@ export function Twin({ original, swap, labels, offset = 0 }: Props) {
       lead.removeEventListener("ended", onPause);
     };
   }, [original, swap, offset]);
+
+  useEffect(() => {
+    const lead = b.current;
+    if (!showcase || !lead) return;
+    if (active) void lead.play().catch(() => {}); else lead.pause();
+  }, [showcase, active]);
 
   function place(clientX: number) {
     const rect = box.current?.getBoundingClientRect();
@@ -78,7 +91,7 @@ export function Twin({ original, swap, labels, offset = 0 }: Props) {
       <video ref={a} className="original" src={original} muted playsInline preload="auto"
         onLoadedMetadata={(event) => { event.currentTarget.currentTime = offset + (b.current?.currentTime ?? 0); }} />
       <video
-        ref={b} className="swap" src={swap} playsInline preload="auto"
+        ref={b} className="swap" src={swap} playsInline preload="auto" muted={showcase} loop={showcase}
         onLoadedMetadata={(event) => {
           const video = event.currentTarget;
           if (video.videoWidth && video.videoHeight) setRatio(video.videoWidth / video.videoHeight);

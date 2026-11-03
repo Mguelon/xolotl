@@ -95,6 +95,28 @@ const en = {
   lang: "ES",
   source: "Source",
   built_with: "MiniMax H3 · SAM 3.1 · Akatz character-swap LoRA · ComfyUI",
+  nav_swap: "Swap",
+  nav_create: "Create",
+  home_kicker: "Open weights · your GPU",
+  home_title: "Your character, in any video.",
+  home_body: "Make a character, then cast it in a real clip: the scene, the camera and the sound stay as they were. It all runs on your own ComfyUI, and nothing leaves your machine.",
+  door_swap_kicker: "Swap",
+  door_swap_title: "Swap the person in a clip",
+  door_swap_body: "A 5 to 15 s clip and one picture. SAM 3.1 follows the person, MiniMax H3 redraws them as your character, and the rest of the frame keeps its pixels and its sound.",
+  door_swap_hint: "Drag across the clip to compare.",
+  door_swap_cta: "Open the swap",
+  door_create_kicker: "Create",
+  door_create_title: "Make your character",
+  door_create_body: "Describe who you want and get a character ready to cast, made on your GPU like everything else.",
+  door_create_tag: "In the works",
+  door_create_caption: "Amara and Denim were made with Qwen-Image.",
+  door_create_cta: "Open the creator",
+  home_fact_weights: "Open weights end to end",
+  home_fact_workflow: "Each take comes with the exact ComfyUI workflow it ran",
+  home_fact_local: "No account, no credits, no upload",
+  create_title: "The character creator is on its way",
+  create_body: "This is where you will make the characters you cast in a swap. Until it lands, Amara and Denim are ready to try in the swap.",
+  create_cta: "Go to the swap",
 };
 
 const es: typeof en = {
@@ -192,7 +214,33 @@ const es: typeof en = {
   lang: "EN",
   source: "Código",
   built_with: "MiniMax H3 · SAM 3.1 · LoRA de cambio de personaje de Akatz · ComfyUI",
+  nav_swap: "Cambio",
+  nav_create: "Creador",
+  home_kicker: "Modelos abiertos · tu GPU",
+  home_title: "Tu personaje, en cualquier video.",
+  home_body: "Haz un personaje y ponlo en un clip real: la escena, la cámara y el sonido se quedan como estaban. Todo corre en tu propio ComfyUI y nada sale de tu máquina.",
+  door_swap_kicker: "Cambio",
+  door_swap_title: "Cambia a la persona de un clip",
+  door_swap_body: "Un clip de 5 a 15 s y una imagen. SAM 3.1 sigue a la persona, MiniMax H3 la redibuja como tu personaje, y el resto del cuadro conserva sus píxeles y su sonido.",
+  door_swap_hint: "Arrastra sobre el clip para comparar.",
+  door_swap_cta: "Abrir el cambio",
+  door_create_kicker: "Creador",
+  door_create_title: "Haz a tu personaje",
+  door_create_body: "Describe a quien quieres y obtén un personaje listo para el cambio, hecho en tu GPU como todo lo demás.",
+  door_create_tag: "En construcción",
+  door_create_caption: "Amara y Denim se hicieron con Qwen-Image.",
+  door_create_cta: "Abrir el creador",
+  home_fact_weights: "Modelos abiertos de principio a fin",
+  home_fact_workflow: "Cada toma trae el workflow exacto de ComfyUI con que corrió",
+  home_fact_local: "Sin cuenta, sin créditos, sin subir nada",
+  create_title: "El creador de personajes viene en camino",
+  create_body: "Aquí vas a hacer los personajes que pones en el cambio. Mientras llega, Amara y Denim ya están listas para probar el cambio.",
+  create_cta: "Ir al cambio",
 };
 
 export const STRINGS: Record<Lang, typeof en> = { en, es };
 export type Key = keyof typeof en;
+export type Strings = typeof en;
+
+/** «3 takes», «1 toma»: the count and the word that goes with it. */
+export const counted = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
