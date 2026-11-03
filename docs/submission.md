@@ -31,7 +31,7 @@ category and one model-provider bonus; every entry is considered for *Best Overa
 | Project name | Xólotl |
 | One-line description (≤100 chars) | Make a character, then cast it in any video — on your own GPU, open weights only. |
 | GitHub repo | https://github.com/Mguelon/xolotl |
-| Demo video (<2 min) | (the YouTube link) |
+| Demo video (<2 min) | https://youtu.be/QFLp0-b9O2A |
 | Live link | None: Xólotl runs on your own GPU, in front of your own ComfyUI. Setup: README → Install. |
 | Social post (#OpenSourceHiggsfield) | (the post's link) |
 | Which parts of ComfyUI did you use? | The Comfy SDK (`@comfyorg/sdk`, TypeScript) against the Comfy API v2, through Comfy's official self-hosted `comfy-api-proxy`; every step is an API-format ComfyUI workflow in `workflows/`; core nodes (MiniMax H3, SAM 3.1, FLUX.2, video, *Generate Text*); eleven nodes of our own (MIT). |

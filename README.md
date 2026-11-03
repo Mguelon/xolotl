@@ -4,7 +4,7 @@
 
 ![Xólotl's twin view: the original clip left of the divider, and on the right Lana, a black sheep made in Xólotl's creator, in the same shot](docs/xolotl.png)
 
-**▶ [Watch the 2-minute demo](DEMO_URL)**
+**▶ [Watch the 2-minute demo](https://youtu.be/QFLp0-b9O2A)**
 
 Xólotl is a small web app in front of your ComfyUI, with two tools that work together:
 
