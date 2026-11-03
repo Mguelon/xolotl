@@ -157,7 +157,7 @@ export function Creator() {
   const emptyBody: Record<Step, string> = { head: t.cr_empty_head_body, body: t.cr_empty_body_body, sheet: t.cr_empty_sheet_body };
   const chatPlaceholder: Record<Step, string> = { head: t.cr_chat_head, body: t.cr_chat_body, sheet: t.cr_chat_sheet };
   const the: Record<Step, string> = { head: t.cr_the_head, body: t.cr_the_body, sheet: t.cr_the_sheet };
-  const working: Record<CharacterJob["kind"], string> = { heads: t.cr_working_heads, body: t.cr_working_body, edit: t.cr_working_edit };
+  const working: Record<CharacterJob["kind"], string> = { heads: t.cr_working_heads, body: t.cr_working_body, edit: t.cr_working_edit, sheet: t.cr_working_sheet };
 
   const versions: Record<Step, Version[]> = {
     head: character?.versions.head.map((v) => ({ id: v.id, url: fileUrl(character.id, v.file) })) ?? [],
@@ -168,9 +168,12 @@ export function Creator() {
   const current = chosenOf(step);
   const busy = sending || (!!job && running(job.status));
   const own = picks.head.start === "picture";
+  // Your own picture, while it is the chosen head, stands in for the body: a mascot drawn whole needs no body step.
+  const pictureHead = character?.versions.head.find((v) => v.id === character.chosen.head)?.source === "picture";
+  const front = chosenOf("body") ?? (pictureHead ? chosenOf("head") : null);
   const needs = step === "head" && own && !picture ? t.cr_need_picture
     : step === "body" && !chosenOf("head") ? t.cr_needs_head
-    : step === "sheet" && !chosenOf("body") ? t.cr_needs_body : "";
+    : step === "sheet" && !front ? t.cr_needs_body : "";
   const heads = headCount(picks.head);
   const eta = step === "head" && own ? t.cr_eta_picture
     : step === "head"
@@ -236,14 +239,15 @@ export function Creator() {
       await start((c) => call<CharacterJob>(`/api/characters/${c.id}/edits`, json("POST", { kind: "body", from: from.id, prompt: bodyPrompt(picks.head, picks.body), picks })));
       return;
     }
-    setNotice(t.cr_not_wired);
+    if (picks.sheet.kind === "full") { setNotice(t.cr_full_soon); return; }
+    await start((c) => call<CharacterJob>(`/api/characters/${c.id}/sheet`, json("POST", { name, picks })));
   }
 
   async function send() {
     const asked = ask.trim();
     if (!asked || busy) return;
     if (!current) { setNotice(t.cr_need_image.replace("{step}", the[step])); return; }
-    if (step === "sheet") { setNotice(t.cr_not_wired); return; }
+    if (step === "sheet") { setNotice(t.cr_sheet_chat); return; }
     setAsk("");
     await start((c) => call<CharacterJob>(`/api/characters/${c.id}/edits`, json("POST", { kind: "edit", step, from: current.id, prompt: editPrompt(asked), picks })));
   }
@@ -311,9 +315,8 @@ export function Creator() {
   }, []);
 
   const round = picking ? versions.head.filter((v) => picking.includes(v.id)) : [];
-  // What the swap gets: the chosen body, or your own picture while there is no body yet (a full-body mascot needs none).
-  const pictureHead = character?.versions.head.find((v) => v.id === character.chosen.head)?.source === "picture";
-  const cast = chosenOf("body") ?? (pictureHead ? chosenOf("head") : null);
+  // What the swap gets: the sheet, with the back for a performer who turns; without one, the body or your own picture.
+  const cast = chosenOf("sheet") ?? front;
   const elapsed = job ? now - Date.parse(job.createdAt) : 0;
 
   return (
@@ -417,7 +420,7 @@ export function Creator() {
           </div>
 
           <form className="ask" onSubmit={(event) => { event.preventDefault(); void send(); }}>
-            <textarea value={ask} rows={1} placeholder={chatPlaceholder[step]} aria-label={chatPlaceholder[step]}
+            <textarea value={ask} rows={1} placeholder={chatPlaceholder[step]} aria-label={chatPlaceholder[step]} disabled={step === "sheet"}
               onChange={(event) => setAsk(event.target.value)}
               onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) { event.preventDefault(); void send(); } }} />
             <button type="submit" className="btn primary" disabled={!ask.trim() || busy}>{t.cr_send}</button>

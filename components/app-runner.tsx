@@ -197,7 +197,8 @@ export function AppRunner() {
     }
   }
 
-  // A character from the creator («Use in the swap» on /create): its chosen body, or its own picture when it has none.
+  // A character from the creator («Use in the swap» on /create): its sheet (the back for a performer who turns), else
+  // its body, else your own picture of it.
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("character");
     if (!id) return;
@@ -208,8 +209,8 @@ export function AppRunner() {
         const response = await fetch(`/api/characters/${encodeURIComponent(id)}`);
         if (!response.ok) throw new Error(t.err_character);
         const meta = await response.json() as CharacterMeta;
-        const chosen = (step: "head" | "body") => meta.versions[step].find((v) => v.id === meta.chosen[step]) ?? meta.versions[step].at(-1);
-        const version = chosen("body") ?? chosen("head");
+        const chosen = (step: "head" | "body" | "sheet") => meta.versions[step].find((v) => v.id === meta.chosen[step]) ?? meta.versions[step].at(-1);
+        const version = chosen("sheet") ?? chosen("body") ?? chosen("head");
         if (!version) throw new Error(t.err_character);
         const extension = version.file.split(".").pop() ?? "png";
         const type = extension === "jpg" ? "image/jpeg" : extension === "webp" ? "image/webp" : "image/png";

@@ -413,6 +413,36 @@ FLUX 3 Image Klein (Black Forest Labs, 2026-10-15) is newer. Its FLUX Kommunity 
 below US$5 million of yearly revenue, with content-filter and AI-disclosure terms. It is not on disk (5.8 + 4.9 GB)
 and was not measured.
 
+## A creator's character in the swap, and its simple sheet (2026-11-03)
+
+The black sheep from the creator (FLUX.2 [klein] 4B: head, body, then «make the hoodie bright red») went to the swap
+with «Use in the swap»: its body as `<Picture 1>`, described by Qwen3-VL 8B as usual, on the bundled terrace clip (the
+first 5.1 s, 480p, take 7d8656b2). ComfyUI took 5 min 27 s. The sheep sits at the table in the red hoodie, drinks from
+the cup and smiles at the end, and the terrace, the flowers and the sea are the clip's. When the performer turns her
+head away, H3 draws the sheep's profile, snout and ears, which no picture showed it. The description called it "a
+stylized humanoid" with "wool-like hair": Qwen3-VL describes what it sees, not what the character is.
+
+When the performer turns around, the back is another matter: without one in the picture, H3 makes it up or copies the
+performer's (Renata's sweater became the performer's cropped top, above). So the creator's third step is the simple
+sheet, one picture that goes in as `<Picture 1>` (`workflows/character-sheet.api.json`). Mike's design (2026-11-03),
+all from the front, the chosen body:
+- **The back.** klein 4B draws it from the body, on the body's canvas.
+- **The face.** klein 4B draws a close-up of it from the body, at its own 1024×1024: «la cara de la hoja la tienes que
+  crear del frente para que tenga buena resolución, no solo es cortar y pegar». Cut from the body and enlarged, the
+  face has the few pixels it has in a full figure.
+- **The layout.** `XolotlSimpleSheet` (`comfy_nodes/xolotl/sheet.py`) puts the whole front and the whole back on one
+  floor line at one scale, and the face beside them as a square as tall as them.
+- **White.** Every picture of the creator is drawn on a plain white background («todo siempre creado sobre fondo
+  blanco»). The figures are found on it by colour but not cut out of it: each goes as a rectangle, faded into the
+  canvas at its border, so white clothes lose nothing.
+
+The first version followed atelier's layout, the front without its head, and Mike changed it the same day: «no la
+queremos sin cabeza el frente, lo queremos completo de frente y tras y la cara grande». Through the app, the white
+sheep's sheet came back right (front, back and face, 2363×1104), but slowly: ComfyUI took 198-381 s for it, and 113-129
+s for each of the other steps, about six times this morning's times with the same graphs, and why is not known yet.
+«Use in the swap» sends the sheet when there is one. What the back adds to a take where the performer turns
+has not been measured yet.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.

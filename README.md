@@ -17,7 +17,7 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 - **Also without the app.** `workflows/xolotl.api.json` is the same take as a plain ComfyUI workflow: drop it on ComfyUI, choose your clip in *Load Video* and your picture in *Load Image*, set the seconds to use, and queue it. Qwen3-VL 8B describes the picture and the prompt is written there as the app writes it; a direction of your own goes in its node.
 - **Takes.** Every finished swap stays on disk with its character, its settings and the exact workflow JSON that ran — download the video, or the workflow together with its clip and character (named as the workflow expects them) to run the same graph in ComfyUI yourself.
 - **Honest status.** Where the take is (preparing, reading, generating, assembling), the sampler's step and, for longer parts, the window, how long it has run and about how long it has left. The step comes from ComfyUI's own log, since the API proxy does not relay per-node progress, and the time left from the step time ComfyUI measures plus the timings in [docs/measurements.md](docs/measurements.md). Queue position and live GPU load too; *Stop* cancels the take through the same API; opening the app, here or in another browser on the LAN, shows a running take at once. A health pill tells you up front if a node or a model is missing (`npm run doctor` does the same from the terminal), and what the take adapts to what your ComfyUI has: Veda missing, the fp8 weights, a node of Xólotl's missing.
-- **A character creator.** `/create` makes the character you cast, in atelier's steps: the head (up to four to choose from), the body and its clothes around the head you pick, and any change in words ("make the hoodie red") on either. It starts from scratch — a person, an animal that stands like a person, a hybrid, an alien or anything else — or from a picture you already have, such as a shop's mascot. FLUX.2 [klein] 4B draws all of it on your ComfyUI: four heads in about 20 s and a body in 15 s on the A4000. *Use in the swap* takes the character to the swap.
+- **A character creator.** `/create` makes the character you cast, in atelier's steps: the head (up to four to choose from), the body and its clothes around the head you pick, and any change in words ("make the hoodie red") on either. It starts from scratch — a person, an animal that stands like a person, a hybrid, an alien or anything else — or from a picture you already have, such as a shop's mascot. The last step is the simple sheet the swap casts from, Mike's design: all from the front, the body, with the back and a close-up of the face drawn from it and the three side by side in one picture, so a performer who turns around gets the character's back and not a made-up one. FLUX.2 [klein] 4B draws all of it on your ComfyUI, always on a plain white background: four heads in about 20 s and a body in 15 s on the A4000, and the sheet is a body and a face. *Use in the swap* takes the character, its sheet if it has one, to the swap.
 - **Two bundled takes** made with open models (a clip from MiniMax H3, characters from Qwen-Image), so the first run needs no upload.
 - English and Spanish interface.
 
@@ -46,7 +46,7 @@ The default recipe is MiniMax H3 `ref2va` in int8 with the ref2v 4-step turbo Lo
 git clone https://github.com/Mguelon/xolotl.git && cd xolotl
 npm ci
 
-# 1. The nodes: Xólotl's own ten, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
+# 1. The nodes: Xólotl's own eleven, Akatz Labs' character-swap pack (GPL-3.0) and Veda, pinned to the tested revisions
 scripts/install-nodes.sh /path/to/ComfyUI
 
 # 2. The models (~49 GB, open weights; read each model card's licence)
@@ -90,7 +90,7 @@ The prompt always starts with Xólotl's own instruction, *Replace the person in 
 
 ## Which parts of ComfyUI
 
-Core ComfyUI nodes (MiniMax H3, SAM 3.1, video, and *Generate Text* with Qwen3-VL 8B for the description), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, ten nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
+Core ComfyUI nodes (MiniMax H3, SAM 3.1, video, and *Generate Text* with Qwen3-VL 8B for the description), Akatz Labs' `h3_character_swap` node pack, Veda's sparse-attention node, eleven nodes of Xólotl's own (`comfy_nodes/xolotl`), the **Comfy SDK** (`@comfyorg/sdk` 0.5.0, TypeScript) and the **Comfy API v2** served by the official self-hosted proxy (`comfy-api-proxy` 0.1.6). The same code runs unchanged against Comfy Cloud or a Developer Platform deployment: set `COMFY_BASE_URL` and `COMFY_API_KEY`.
 
 ## The stack is fully open
 
@@ -101,7 +101,7 @@ Core ComfyUI nodes (MiniMax H3, SAM 3.1, video, and *Generate Text* with Qwen3-V
 | Ref2V turbo 4-step LoRA v0.1 ([lightx2v/Minimax-h3-Turbo](https://huggingface.co/lightx2v/Minimax-h3-Turbo), packaged in Comfy-Org/MiniMax-H3) | see model card |
 | Veda R2VA sparse-attention predictor ([Veda-Sparse/Minimax-H3-R2VA-Veda-Preview](https://huggingface.co/Veda-Sparse/Minimax-H3-R2VA-Veda-Preview)) | MiniMax H3 Community License |
 | Veda node ([veda-sparse/Veda-on-ComfyUI](https://github.com/veda-sparse/Veda-on-ComfyUI), installed by script) | MIT |
-| Xólotl's ten nodes (`comfy_nodes/xolotl`); the grey mannequin follows D3voz's `H3GreyMannequins` ([comfyui-h3-oneclick-swap](https://github.com/D3voz/comfyui-h3-oneclick-swap), MIT) | MIT |
+| Xólotl's eleven nodes (`comfy_nodes/xolotl`); the grey mannequin follows D3voz's `H3GreyMannequins` ([comfyui-h3-oneclick-swap](https://github.com/D3voz/comfyui-h3-oneclick-swap), MIT) | MIT |
 | YuNet face detector ([OpenCV Zoo](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet), 227 KB, bundled in `comfy_nodes/xolotl/models/`) | MIT |
 | SAM 3.1 ([Comfy-Org/sam3.1](https://huggingface.co/Comfy-Org/sam3.1)) | see model card |
 | FLUX.2 [klein] 4B, distilled, for the character creator ([black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B); its BF16 weights as GGUF, [unsloth/FLUX.2-klein-4B-GGUF](https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF)) | Apache 2.0 |

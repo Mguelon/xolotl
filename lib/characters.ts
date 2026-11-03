@@ -26,7 +26,7 @@ export type Version = {
 export type CharacterJob = {
   id: string;
   step: Step;
-  kind: "heads" | "body" | "edit";
+  kind: "heads" | "body" | "edit" | "sheet";
   status: string;
   createdAt: string;
   completedAt: string | null;

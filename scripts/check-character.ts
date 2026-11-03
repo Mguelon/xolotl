@@ -1,13 +1,17 @@
 // Makes a character through the app the way the creator page does, and checks that every step comes back:
 //   node --experimental-strip-types scripts/check-character.ts [app url, default http://127.0.0.1:3011]
+//   node --experimental-strip-types scripts/check-character.ts --sheet <character id> [app url]
 // Four heads of an anthropomorphic black sheep in the 3D animated style (the mascot case), the body in a hoodie and
-// jeans around the head the page shows first, then one change to that body in words. Prints each job's seconds and
-// the versions it made, and exits 1 when a job fails, makes no picture or a picture is not served. The character stays
-// in data/characters, among the page's characters, to be looked at there.
+// jeans around the head the page shows first, one change to that body in words, and the simple sheet. With --sheet,
+// only the sheet, of a character that has a body. Prints each job's seconds and the versions it made, and exits 1
+// when a job fails, makes no picture or a picture is not served. The character stays in data/characters, among the
+// page's characters, to be looked at there.
 import { bodyPrompt, editPrompt, headCount, headPrompt, initialPicks, type Picks, type Step } from "../lib/character.ts";
 import type { CharacterJob, CharacterMeta } from "../lib/characters.ts";
 
-const APP = (process.argv[2] || "http://127.0.0.1:3011").replace(/\/$/, "");
+const args = process.argv.slice(2);
+const sheetOf = args.includes("--sheet") ? args[args.indexOf("--sheet") + 1] : null;
+const APP = (args.find((arg) => /^https?:/.test(arg)) || "http://127.0.0.1:3011").replace(/\/$/, "");
 const TERMINAL = new Set(["succeeded", "failed", "cancelled", "canceled", "error", "expired"]);
 
 async function call<T>(path: string, method = "GET", body?: unknown): Promise<T> {
@@ -26,7 +30,7 @@ const picks: Record<Step, Picks> = {
 };
 
 const failures: string[] = [];
-let character = await call<CharacterMeta>("/api/characters", "POST", { picks });
+let character = sheetOf ? await call<CharacterMeta>(`/api/characters/${sheetOf}`) : await call<CharacterMeta>("/api/characters", "POST", { picks });
 console.log(`character ${character.id}`);
 
 /** Sends one job and reads it every two seconds, as the page does, until it ends: the read that finds it done stores
@@ -52,10 +56,14 @@ async function job(name: string, path: string, body: Record<string, unknown>) {
   return ok;
 }
 
-if (await job("heads", "heads", { prompt: headPrompt(picks.head), count: headCount(picks.head), picks })) {
+if (sheetOf) {
+  await job("sheet", "sheet", {});
+} else if (await job("heads", "heads", { prompt: headPrompt(picks.head), count: headCount(picks.head), picks })) {
   const head = character.chosen.head;
   if (await job("body", "edits", { kind: "body", from: head, prompt: bodyPrompt(picks.head, picks.body), picks })) {
-    await job("change", "edits", { kind: "edit", step: "body", from: character.chosen.body, prompt: editPrompt("Make the hoodie bright red") });
+    if (await job("change", "edits", { kind: "edit", step: "body", from: character.chosen.body, prompt: editPrompt("Make the hoodie bright red") })) {
+      await job("sheet", "sheet", { picks });
+    }
   }
 }
 console.log(failures.length ? `failed: ${failures.join(", ")}` : `all steps came back · ${APP}/create`);

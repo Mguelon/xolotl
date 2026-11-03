@@ -11,6 +11,8 @@ and XolotlRecoverMasks finds the person where the tracking lost them as the pack
 XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
 XolotlMannequin turns the clip's person grey in the reference H3 copies the motion from, so it does not copy their looks.
 XolotlImageDetail lets Gemma read the character's picture at more image tokens than Generate Text gives it.
+XolotlSimpleSheet lays the creator's character out as one picture for H3, all from the front: the whole front, and
+the whole back and the face big drawn from it (sheet.py).
 
 XolotlFitVideo and XolotlRestoreSize cut and decode the original file with the same ffmpeg options, so they see the
 same frames, and neither goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in
@@ -36,6 +38,7 @@ from .geometry import PIXEL_BUDGETS, face_square, fit_canvas, person_box
 from .mannequin import mannequins
 from .masks import grow as grow_masks
 from .reuse import reusing_encodes
+from .sheet import simple_sheet
 
 FPS = 24  # the pack generates at 24 fps (video.py FPS)
 TIMELINE = f"setpts=PTS-STARTPTS,fps=fps={FPS}:round=near:eof_action=round"  # the pack's own resampling
@@ -518,6 +521,30 @@ class XolotlFaceCrop:
         return (torch.from_numpy(close_up).float().div(255).unsqueeze(0),)
 
 
+class XolotlSimpleSheet:
+    """The character's simple sheet (sheet.py), all from the front: the whole front, the whole back and the face big,
+    side by side on one white background, in one picture to give H3 as the character. Without a back, a performer who
+    turns gets a back H3 makes up, or the performer's own (docs/measurements.md). The creator's sheet step draws the
+    back and a close-up of the face from the body with FLUX.2 [klein] 4B, the face at its own 1024×1024 rather than
+    cut from the body and enlarged, and gives this node the three."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"front": ("IMAGE",), "back": ("IMAGE",), "face": ("IMAGE",)}}
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("sheet",)
+    FUNCTION = "compose"
+    CATEGORY = "Xólotl"
+    DESCRIPTION = "The character's whole front, its whole back and its face big, in one picture for H3."
+
+    def compose(self, front, back, face):
+        pictures = [(t[0, :, :, :3].clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy() for t in (front, back, face)]
+        sheet = simple_sheet(*pictures)
+        logging.info("Xólotl: simple sheet, %d×%d", sheet.shape[1], sheet.shape[0])
+        return (torch.from_numpy(sheet).float().div(255).unsqueeze(0),)
+
+
 class XolotlMannequin:
     """The person in H3's motion reference turned into a grey figure (mannequin.py, after D3voz's H3GreyMannequins,
     MIT): H3 follows the clip's motion without copying the performer's looks. With only the colours and the face of
@@ -583,7 +610,7 @@ NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": Xolo
                        "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
                        "XolotlRecoverMasks": XolotlRecoverMasks,
                        "XolotlFaceCrop": XolotlFaceCrop, "XolotlMannequin": XolotlMannequin,
-                       "XolotlImageDetail": XolotlImageDetail}
+                       "XolotlImageDetail": XolotlImageDetail, "XolotlSimpleSheet": XolotlSimpleSheet}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
@@ -593,4 +620,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlRecoverMasks": "Xólotl · Find the Person on Empty Frames",
                               "XolotlFaceCrop": "Xólotl · Character Face Close-up",
                               "XolotlMannequin": "Xólotl · Grey Mannequin for the Motion",
-                              "XolotlImageDetail": "Xólotl · Let Gemma See More of the Picture"}
+                              "XolotlImageDetail": "Xólotl · Let Gemma See More of the Picture",
+                              "XolotlSimpleSheet": "Xólotl · Simple Character Sheet"}

@@ -28,16 +28,16 @@ export type Picks = Record<string, Value>;
 
 export const word = (w: Words, lang: Lang) => w[lang];
 
-/** The style templates; `{desc}` is who the character is. A head-and-shoulders portrait on a plain grey background. */
+/** The style templates; `{desc}` is who the character is. A head-and-shoulders portrait on a plain white background. */
 const STYLE_PROSE: Record<string, string> = {
-  realista: "Close-up portrait photograph of {desc}. Head and shoulders, facing the camera with a neutral relaxed expression. Plain light grey seamless studio background, soft even studio lighting, sharp focus, realistic skin texture, natural proportions, 85mm lens, high-resolution photo.",
-  cine: "Cinematic film still, close-up portrait of {desc}. Head and shoulders, facing the camera with a neutral expression. Dramatic moody key light with a soft rim light, shallow depth of field, subtle film grain, teal and amber color grading, anamorphic look, plain dark grey background, high-quality movie frame.",
-  anime: "Anime illustration, close-up portrait of {desc}. Head and shoulders, facing the viewer with a calm neutral expression. Clean cel shading, crisp confident line art, large expressive eyes, detailed hair with highlights, plain light grey background, soft even lighting, high-quality anime key visual.",
-  caricatura: "3D animated feature film character render, close-up portrait of {desc}. Head and shoulders, facing the camera with a friendly neutral expression. Stylized appealing proportions with a slightly larger head and big expressive eyes, smooth subsurface-scattering skin, soft studio lighting, plain light grey background, high-quality modern 3D animation render.",
-  ilustracion: "Painted digital illustration, close-up portrait of {desc}. Head and shoulders, facing the viewer with a neutral expression. Expressive visible brushstrokes, rich layered color, painterly character concept art, plain light grey background, soft directional lighting, high quality.",
-  comic: "American comic book illustration, close-up portrait of {desc}. Head and shoulders, facing the viewer with a neutral expression. Bold ink outlines, flat comic colors with halftone shading, dynamic inked details, plain light grey background, high-quality comic art.",
-  acuarela: "Watercolor painting, close-up portrait of {desc}. Head and shoulders, facing the viewer with a neutral expression. Soft translucent washes, wet-on-wet blooms, visible paper texture, loose edges, plain light background, high-quality watercolor illustration.",
-  plastilina: "Claymation stop-motion puppet, close-up portrait of {desc}. Head and shoulders, facing the camera with a neutral expression. Hand-sculpted modeling clay with fingerprints and subtle imperfections, matte clay texture, soft studio lighting, plain light grey background, high-quality stop-motion still.",
+  realista: "Close-up portrait photograph of {desc}. Head and shoulders, facing the camera with a neutral relaxed expression. Plain white seamless studio background, soft even studio lighting, sharp focus, realistic skin texture, natural proportions, 85mm lens, high-resolution photo.",
+  cine: "Cinematic film still, close-up portrait of {desc}. Head and shoulders, facing the camera with a neutral expression. Dramatic moody key light with a soft rim light, shallow depth of field, subtle film grain, teal and amber color grading, anamorphic look, plain white background, high-quality movie frame.",
+  anime: "Anime illustration, close-up portrait of {desc}. Head and shoulders, facing the viewer with a calm neutral expression. Clean cel shading, crisp confident line art, large expressive eyes, detailed hair with highlights, plain white background, soft even lighting, high-quality anime key visual.",
+  caricatura: "3D animated feature film character render, close-up portrait of {desc}. Head and shoulders, facing the camera with a friendly neutral expression. Stylized appealing proportions with a slightly larger head and big expressive eyes, smooth subsurface-scattering skin, soft studio lighting, plain white background, high-quality modern 3D animation render.",
+  ilustracion: "Painted digital illustration, close-up portrait of {desc}. Head and shoulders, facing the viewer with a neutral expression. Expressive visible brushstrokes, rich layered color, painterly character concept art, plain white background, soft directional lighting, high quality.",
+  comic: "American comic book illustration, close-up portrait of {desc}. Head and shoulders, facing the viewer with a neutral expression. Bold ink outlines, flat comic colors with halftone shading, dynamic inked details, plain white background, high-quality comic art.",
+  acuarela: "Watercolor painting, close-up portrait of {desc}. Head and shoulders, facing the viewer with a neutral expression. Soft translucent washes, wet-on-wet blooms, visible paper texture, loose edges, plain white background, high-quality watercolor illustration.",
+  plastilina: "Claymation stop-motion puppet, close-up portrait of {desc}. Head and shoulders, facing the camera with a neutral expression. Hand-sculpted modeling clay with fingerprints and subtle imperfections, matte clay texture, soft studio lighting, plain white background, high-quality stop-motion still.",
 };
 
 const STYLE: Choice[] = [
@@ -315,8 +315,10 @@ export const SHEET_KINDS: Record<string, Words> = {
 };
 
 /** What each step takes on the A4000. The head and the body: FLUX.2 [klein] 4B, measured 2026-11-03 (docs/measurements.md:
- *  four heads in 18-24 s, a body in 15-16 s). The sheet: atelier's (frontend/lib/personaje.ts, 2026-10-13 and 10-15). */
-export const SECONDS = { head: 4, headLoad: 8, body: 16, sheetSimple: 115, sheetFull: 720 };
+ *  four heads in 18-24 s, a body in 15-16 s); the simple sheet is a back view (as long as a body) and a close-up of the
+ *  face (1024×1024, about 0.6 of a body's pixels), so a body and a little over half another. The full sheet: atelier's
+ *  (frontend/lib/personaje.ts, 2026-10-13 and 10-15). */
+export const SECONDS = { head: 4, headLoad: 8, body: 16, sheetSimple: 28, sheetFull: 720 };
 
 export function initialPicks(step: Step): Picks {
   const picks: Picks = {};
@@ -448,8 +450,26 @@ export function bodyPrompt(head: Picks, body: Picks): string {
     ? (text(head.what, 120) ? ` (${text(head.what, 120)})` : "")
     : `: ${describeHead(head)}`;
   return tidy(`Full-body image of the same character as in image 1${who}. ${describeBody(body, head)} ${pose(head)} the whole `
-    + "figure visible from head to toe with space above and below it. Plain light grey seamless studio background, soft "
+    + "figure visible from head to toe with space above and below it. Plain white seamless studio background, soft "
     + "even studio lighting. Keep exactly the same face, head, hair, colors, art style and rendering as in image 1.");
+}
+
+/** The back view for the simple sheet, drawn from the body (image 1): the hair and the clothes from behind, which H3
+ *  otherwise makes up, or takes from the performer, when the person in the clip turns around (docs/measurements.md). */
+export function backPrompt(): string {
+  return "The same character as in image 1, turned around and seen from directly behind: a back view of the whole figure "
+    + "from head to toe, in the same pose as in image 1, with space above and below it. Exactly the same body, proportions, "
+    + "hair, clothes, shoes, colors, art style and rendering as in image 1, as they look from behind. Plain white "
+    + "seamless studio background, soft even studio lighting.";
+}
+
+/** The face up close for the simple sheet, drawn from the body (image 1) at its own 1024×1024: cut from the body and
+ *  enlarged, it would have the few pixels the face has in a full figure. */
+export function facePrompt(): string {
+  return "A close-up portrait of the same character as in image 1: the head and the top of the shoulders filling the "
+    + "frame, facing the viewer with a neutral expression. Exactly the same face, eyes, hair, skin, colors, clothes, art "
+    + "style and rendering as in image 1, in sharp detail. Plain white seamless studio background, soft even studio "
+    + "lighting.";
 }
 
 /** A change asked in the box under the picture: only that, on the picture it is asked of (atelier's SOLO_ESO). */

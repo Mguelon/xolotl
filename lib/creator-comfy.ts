@@ -6,7 +6,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Picks, Step } from "./character";
+import { backPrompt, facePrompt, type Picks, type Step } from "./character";
 import {
   FILE_TYPES, canvasFor, characterFile, imageSize, newVersionId, readCharacter, updateCharacter, writeVersionFile,
   type CharacterJob, type CharacterMeta, type Version,
@@ -14,7 +14,7 @@ import {
 import { comfyClient, isActive } from "./comfy";
 import type { Graph } from "./swap";
 
-async function workflow(name: "head" | "edit"): Promise<Graph> {
+async function workflow(name: "head" | "edit" | "sheet"): Promise<Graph> {
   return JSON.parse(await readFile(join(process.cwd(), "workflows", `character-${name}.api.json`), "utf8")) as Graph;
 }
 
@@ -71,6 +71,44 @@ export async function submitEdit(id: string, request: {
   }, request.picks);
 }
 
+/** The simple sheet (workflows/character-sheet), all from the front, the chosen body: the back and a close-up of the
+ *  face drawn from it, then the three side by side on white (XolotlSimpleSheet). With no body yet, your own picture is
+ *  the front. */
+export async function submitSheet(id: string, request: { seed?: number; name?: string; picks?: CharacterMeta["picks"] }) {
+  let meta = await readCharacter(id);
+  if (!meta) throw new Error("No such character.");
+  if (typeof request.name === "string" && request.name.trim() !== meta.name) {
+    meta = await updateCharacter(id, (m) => { m.name = request.name!.trim().slice(0, 80); });
+  }
+  const chosen = (step: "head" | "body") =>
+    meta!.versions[step].find((version) => version.id === meta!.chosen[step]) ?? meta!.versions[step].at(-1) ?? null;
+  const head = chosen("head");
+  const body = chosen("body") ?? (head?.source === "picture" ? head : null);
+  if (!body) throw new Error("The sheet needs the body, or your own picture of the character.");
+  const api = comfyClient();
+  const graph = await workflow("sheet");
+  const seed = request.seed ?? randomSeed();
+  const load = async (version: Version) => {
+    const bytes = new Uint8Array(await readFile(characterFile(id, version.file)));
+    const extension = version.file.split(".").pop() ?? "png";
+    return { bytes, asset: api.assets.fromBytes(bytes, { filename: version.file, contentType: FILE_TYPES[extension] ?? "image/png" }) };
+  };
+  const front = await load(body);
+  graph["20"].inputs.image = front.asset;
+  graph["5"].inputs.text = backPrompt();
+  graph["40"].inputs.text = facePrompt();
+  // The back on the front's own canvas: a generated body's 1024×1792, or your picture's shape.
+  const canvas = canvasFor(imageSize(front.bytes));
+  for (const node of ["6", "7"]) Object.assign(graph[node].inputs, canvas);
+  graph["9"].inputs.noise_seed = seed;
+  graph["13"].inputs.filename_prefix = `xolotl/character/${id.slice(0, 8)}-sheet`;
+  const job = await api.submit(api.workflows.fromJson(graph));
+  return record(id, {
+    id: job.id, step: "sheet", kind: "sheet", status: job.status, createdAt: new Date().toISOString(), completedAt: null,
+    prompt: `${backPrompt()}\n\n${facePrompt()}`, seed, from: body.id, error: null, made: [],
+  }, request.picks);
+}
+
 /** Your own picture of the character, as the head's newest version. */
 export async function addPicture(id: string, file: File, picks?: CharacterMeta["picks"]): Promise<CharacterMeta> {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -93,6 +131,13 @@ export async function addPicture(id: string, file: File, picks?: CharacterMeta["
 
 const persisting = new Map<string, Promise<CharacterMeta>>();
 
+/** The proxy calls a job "expired" when ComfyUI shows it neither in its queue nor in its history. Through a waker in
+ *  front of ComfyUI (alpha's comfyui-waker), a ComfyUI too busy to answer within the waker's few seconds (a model
+ *  loading, the machine under load) gets the proxy a 503 instead, and it says "expired" of a job ComfyUI is running:
+ *  on 2026-11-03 the heads and a body "expired" at 27-44 s and ComfyUI finished both. A job younger than this is read
+ *  again instead, as the proxy works the status out afresh on every read. */
+const EXPIRED_GRACE_MS = 15 * 60_000;
+
 /** The job as ComfyUI has it now. The first read after it succeeded saves its pictures as versions of its step and
  *  makes the first of them the chosen one; later reads find them already there. */
 export async function readCharacterJob(id: string, jobId: string): Promise<{ job: CharacterJob; character: CharacterMeta }> {
@@ -102,6 +147,7 @@ export async function readCharacterJob(id: string, jobId: string): Promise<{ job
   if (!isActive(known.status)) return { job: known, character: meta };
 
   const job = await comfyClient().jobs.get(jobId);
+  if (job.status === "expired" && Date.now() - Date.parse(known.createdAt) < EXPIRED_GRACE_MS) return { job: known, character: meta };
   if (job.status !== "succeeded") {
     if (job.status === known.status) return { job: known, character: meta };
     const error = job.error ? (typeof job.error === "string" ? job.error : JSON.stringify(job.error)).slice(0, 2000) : null;

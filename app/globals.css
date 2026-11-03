@@ -567,6 +567,8 @@ textarea::placeholder { color: var(--text-3); }
 .roster .who[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .roster .who.new { border-style: dashed; }
 .screen > .preview { max-height: calc(var(--screen-h) - 2 * var(--screen-pad)); }
+/* A wide picture (the sheet) stays clear of the versions strip on the left, and centred. */
+.canvas > .preview { max-width: calc(100% - 2 * 84px); }
 .pick { display: grid; justify-items: center; gap: 12px; width: 100%; padding-left: 80px; }
 .pick-title { margin: 0; display: grid; justify-items: center; gap: 2px; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
 .pick-title small { font-family: var(--font-sans); font-weight: 400; font-size: 12.5px; color: var(--text-3); }

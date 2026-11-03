@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Installs the node packs Xólotl's workflow uses into your ComfyUI, at the revisions Xólotl was tested with:
-#   - Xólotl's own ten nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around
+#   - Xólotl's own eleven nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around
 #     the person, the person found again where SAM's tracking lost them, the first pass's masks carried onto that
 #     crop, the person's mask grown, the VAE without the pack's repeated encode, the result back at the clip's own
-#     size and place, the close-up of the character's face
+#     size and place, the close-up of the character's face, the character's simple sheet
 #     (OpenCV's YuNet, MIT, bundled in models/), the clip's person as a grey mannequin for the motion (after
 #     D3voz's H3GreyMannequins, MIT) and a bigger image budget for Gemma 4, which described the character before Qwen3-VL 8B. Plain
 #     Python, OpenCV and ffmpeg, which ComfyUI needs anyway.
@@ -24,6 +24,7 @@ rm -rf "$COMFYUI_DIR/custom_nodes/xolotl"
 mkdir -p "$COMFYUI_DIR/custom_nodes/xolotl"
 cp "$HERE/comfy_nodes/xolotl/__init__.py" "$HERE/comfy_nodes/xolotl/nodes.py" "$HERE/comfy_nodes/xolotl/geometry.py" \
   "$HERE/comfy_nodes/xolotl/reuse.py" "$HERE/comfy_nodes/xolotl/masks.py" "$HERE/comfy_nodes/xolotl/mannequin.py" \
+  "$HERE/comfy_nodes/xolotl/sheet.py" \
   "$COMFYUI_DIR/custom_nodes/xolotl/"
 cp -R "$HERE/comfy_nodes/xolotl/models" "$COMFYUI_DIR/custom_nodes/xolotl/"
 REV=0670e4fdf95adf2262caa4b81afed2a9c4ae4b7b
