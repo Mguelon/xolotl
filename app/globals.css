@@ -42,7 +42,7 @@ a { color: inherit; text-decoration: none; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.app { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
+.app { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 
 /* ── Top ─────────────────────────────────────────────── */
 .top {
@@ -82,16 +82,43 @@ a { color: inherit; text-decoration: none; }
 .ghost:hover { border-color: var(--line-strong); color: var(--text); }
 .lang { font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .08em; }
 
-/* ── Layout ──────────────────────────────────────────── */
-.grid {
+/* ── Workspace: two windows, each scrolling on its own ── */
+/* The stage (the take, its progress, the takes) on the left, the controls on the right with Transform always in
+   reach. The controls come first in the page, so a keyboard or a phone meets them first. */
+.workspace {
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(300px, 5fr) 7fr;
-  gap: clamp(20px, 3vw, 44px);
-  padding: clamp(18px, 3vw, 40px);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 27vw, 440px);
+  gap: clamp(14px, 1.8vw, 24px);
+  padding: clamp(12px, 1.8vw, 24px);
 }
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
+.stage {
+  grid-column: 1; grid-row: 1;
+  min-height: 0; min-width: 0; overflow-y: auto; scrollbar-width: thin;
+  display: grid; align-content: start; gap: 16px;
+  /* The screen's height, from the window's: the title, the screen and the take's buttons fit without scrolling. */
+  --screen-pad: clamp(10px, 1.4vw, 18px);
+  --screen-h: clamp(320px, calc(100dvh - 330px), 780px);
+}
+.panel {
+  grid-column: 2; grid-row: 1;
+  min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--bg-1); overflow: hidden;
+  box-shadow: 0 30px 60px -40px oklch(0% 0 0 / 0.7);
+}
+.panel-body { min-height: 0; overflow-y: auto; scrollbar-width: thin; display: grid; align-content: start; gap: 22px; padding: 20px; }
+.panel-foot { display: grid; gap: 10px; padding: 16px 20px 18px; border-top: 1px solid var(--line); background: var(--bg-2); }
+.panel-foot .estimate, .panel-foot .run { margin: 0; }
+.panel :is(textarea, .seg, .seed input) { background: var(--bg-0); }
+.panel .tile { background: var(--bg-0); }
+.panel .tile:hover, .panel .tile.over { background: var(--bg-2); }
+@media (max-width: 960px) {
+  .app { height: auto; min-height: 100dvh; }
+  .workspace { grid-template-columns: 1fr; }
+  .stage, .panel { grid-column: 1; grid-row: auto; }
+  .stage, .panel-body { overflow: visible; }
+  .stage { --screen-h: clamp(260px, 64vh, 640px); }
+  .panel { grid-template-rows: auto auto; }
   .top { grid-template-columns: auto 1fr; row-gap: 10px; }
   .tagline { grid-column: 1 / -1; grid-row: 2; }
   .top-right { justify-self: end; }
@@ -114,8 +141,7 @@ a { color: inherit; text-decoration: none; }
 }
 .eyebrow b { color: var(--accent); font-weight: 700; margin-right: 8px; }
 
-/* ── Shot column ─────────────────────────────────────── */
-.shot { display: grid; gap: 22px; }
+/* ── Controls ────────────────────────────────────────── */
 .tile {
   position: relative; display: grid; place-items: center; text-align: center;
   min-height: 150px; padding: 22px;
@@ -129,8 +155,8 @@ a { color: inherit; text-decoration: none; }
 .tile-label { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
 .tile-hint { color: var(--text-3); font-size: 12.5px; margin-top: 4px; }
 .tile.filled { padding: 0; overflow: hidden; cursor: default; min-height: 0; background: var(--bg-0); }
-.tile.filled video, .tile.filled img { width: 100%; max-height: 300px; object-fit: contain; background: var(--bg-0); }
-.tile.filled img { object-fit: cover; height: 300px; }
+.tile.filled video, .tile.filled img { width: 100%; max-height: 220px; object-fit: contain; background: var(--bg-0); }
+.tile.filled img { object-fit: cover; height: 220px; }
 .tile.character.filled img { object-position: top; }
 .tile-caption {
   position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 6px;
@@ -188,6 +214,7 @@ textarea::placeholder { color: var(--text-3); }
 
 
 .run {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
   margin-top: 4px; width: 100%; padding: 15px 18px;
   border-radius: var(--radius-s);
   background: var(--accent); color: var(--accent-ink);
@@ -197,10 +224,27 @@ textarea::placeholder { color: var(--text-3); }
 .run:hover:not(:disabled) { filter: brightness(1.06); }
 .run:active:not(:disabled) { transform: scale(0.985); }
 .run:disabled { opacity: .38; cursor: not-allowed; }
+.run kbd {
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  padding: 2px 6px; border-radius: 5px; border: 1px solid color-mix(in oklch, var(--accent-ink) 28%, transparent);
+  color: color-mix(in oklch, var(--accent-ink) 72%, transparent);
+}
 .note { margin: 0; color: var(--text-3); font-size: 12.5px; }
 
 /* ── Stage ───────────────────────────────────────────── */
-.stage { display: grid; gap: 20px; min-width: 0; }
+.stage-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; padding: 2px 2px 0; }
+.stage-title { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: clamp(20px, 2.1vw, 28px); letter-spacing: -0.01em; }
+.stage-meta { margin: 0; display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-2); font-size: 13px; }
+.stage-meta b { color: var(--text); font-weight: 600; }
+/* The screen keeps its size whether it shows the examples, the chosen clip or the take: the page does not jump. */
+.screen {
+  position: relative; display: grid; place-items: center;
+  height: var(--screen-h); padding: var(--screen-pad);
+  border-radius: 16px; border: 1px solid var(--line); overflow: hidden;
+  background: radial-gradient(90% 70% at 50% 35%, color-mix(in oklch, var(--accent) 5%, transparent), transparent 70%), var(--bg-1);
+}
+.screen > .preview { max-height: calc(var(--screen-h) - 2 * var(--screen-pad)); max-width: 100%; border-radius: 10px; background: var(--bg-0); }
+.screen > .examples { width: 100%; max-height: 100%; overflow: auto; }
 .frame {
   position: relative; border-radius: var(--radius); overflow: hidden;
   background: var(--bg-1); border: 1px solid var(--line);
@@ -211,7 +255,7 @@ textarea::placeholder { color: var(--text-3); }
 /* Twin viewer: swap on top, clipped by the divider. */
 .twin { touch-action: none; user-select: none; cursor: ew-resize; }
 /* The take's own proportions; a tall clip is capped by the viewport height and centred. */
-.frame.twin { aspect-ratio: var(--ratio, 16 / 9); width: min(100%, calc(76vh * var(--ratio, 16 / 9))); justify-self: center; }
+.frame.twin { aspect-ratio: var(--ratio, 16 / 9); width: min(100%, calc((var(--screen-h) - 2 * var(--screen-pad)) * var(--ratio, 16 / 9))); justify-self: center; }
 .twin video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--bg-0); }
 .twin .swap { clip-path: inset(0 0 0 var(--x)); }
 .twin .divider {
@@ -240,6 +284,7 @@ textarea::placeholder { color: var(--text-3); }
 }
 
 .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.bar .actions { width: 100%; justify-content: space-between; align-items: center; }
 .bar .meta { color: var(--text-2); font-size: 13px; display: flex; gap: 14px; flex-wrap: wrap; }
 .bar .meta b { color: var(--text); font-weight: 600; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
@@ -326,7 +371,7 @@ textarea::placeholder { color: var(--text-3); }
 /* Footer */
 .foot {
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  padding: 18px clamp(16px, 3vw, 40px); border-top: 1px solid var(--line);
+  margin-top: 6px; padding: 14px 2px 2px; border-top: 1px solid var(--line);
   color: var(--text-3); font-size: 12.5px;
 }
 .foot b { color: var(--text-2); font-weight: 600; }

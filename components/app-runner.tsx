@@ -236,7 +236,7 @@ export function AppRunner() {
   }
 
   async function transform() {
-    if (!video || !character || busy) return;
+    if (!video || !character || busy || describing) return;
     setError(false); setJob(null); setSelected(null); setPhase("submitting"); setMessage(t.phase_uploading);
     submittedAt.current = Date.now();
     const form = new FormData();
@@ -300,6 +300,17 @@ export function AppRunner() {
     } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : t.err_status); }
   }
 
+  // Ctrl+Enter (⌘+Enter on a Mac) transforms from anywhere on the page, as the button would.
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); void transformRef.current(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const shown = selected ? takes.find((take) => take.id === selected) ?? job?.take ?? null : null;
   const twin = shown?.status === "succeeded" && shown.result
     ? { original: `/api/takes/${shown.id}/clip.mp4`, swap: `/api/takes/${shown.id}/result.mp4`, id: shown.id }
@@ -345,8 +356,9 @@ export function AppRunner() {
         </div>
       </header>
 
-      <main className="grid">
-        <section className="shot" aria-label={t.shot}>
+      <main className="workspace">
+        <aside className="panel" aria-label={t.shot}>
+          <div className="panel-body">
           <div>
             <h2 className="eyebrow"><b>01</b>{t.shot}</h2>
             <Tile kind="clip" label={t.clip_label} hint={t.clip_hint} accept="video/mp4,video/quicktime" disabled={busy}
@@ -382,22 +394,37 @@ export function AppRunner() {
             <label className="seed"><span>{t.seed}</span>
               <input inputMode="numeric" value={seed} disabled={busy} onChange={(event) => setSeed(event.target.value.replace(/\D/g, ""))} placeholder={t.seed_random} /></label>
           </div>
-          {(() => {
-            const estimate = estimateMinutes(size, video ? seconds : 5);
-            return estimate ? <p className="estimate">{t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1]))}</p> : null;
-          })()}
-          <button type="button" className="run" disabled={!video || !character || busy || describing} onClick={() => void transform()}>{busy ? t.working : t.run}</button>
-          <p className="note">{t.note_audio}</p>
-        </section>
+          </div>
+          <div className="panel-foot">
+            {(() => {
+              const estimate = estimateMinutes(size, video ? seconds : 5);
+              return estimate ? <p className="estimate">{t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1]))}</p> : null;
+            })()}
+            <button type="button" className="run" disabled={!video || !character || busy || describing} onClick={() => void transform()}>
+              <span>{busy ? t.working : t.run}</span>{!busy && <kbd aria-hidden>Ctrl ↵</kbd>}
+            </button>
+            <p className="note">{t.note_audio}</p>
+          </div>
+        </aside>
 
-        <section className="stage">
+        <section className="stage" aria-label={twin ? t.stage_result : t.stage_clip}>
+          <div className="stage-head">
+            <h1 className="stage-title">{twin ? t.stage_result : videoUrl ? t.stage_clip : t.examples}</h1>
+            {twin && shown && (
+              <p className="stage-meta">
+                <span><b>{shown.settings.size}</b> · {shown.settings.seconds} s</span>
+                {shown.elapsedMs ? <span>{mmss(shown.elapsedMs)} {t.elapsed}</span> : null}
+                <span>{t.seed} <b>{shown.settings.seed}</b></span>
+              </p>
+            )}
+          </div>
+          <div className="screen">
           {twin ? (
-            <Twin key={twin.id} original={twin.original} swap={twin.swap} labels={{ original: t.original, swap: t.swap, play: "play", pause: "pause" }} />
+            <Twin key={twin.id} original={twin.original} swap={twin.swap} labels={{ original: t.original, swap: t.swap, play: t.play, pause: t.pause }} />
           ) : videoUrl ? (
-            <div className="frame"><video src={videoUrl} controls muted playsInline /></div>
+            <video className="preview" src={videoUrl} controls muted playsInline />
           ) : (
             <section className="examples">
-              <h2>{t.examples}</h2>
               <p>{t.example_hint}</p>
               <div className="example-grid">
                 {EXAMPLES.map((example) => (
@@ -410,14 +437,10 @@ export function AppRunner() {
               </div>
             </section>
           )}
+          </div>
 
           {twin && shown && (
             <div className="bar">
-              <div className="meta">
-                <span><b>{shown.settings.size}</b> · {shown.settings.seconds} s</span>
-                {shown.elapsedMs ? <span>{mmss(shown.elapsedMs)} {t.elapsed}</span> : null}
-                <span>{t.seed} <b>{shown.settings.seed}</b></span>
-              </div>
               <div className="actions">
                 <div className="rerun" title={t.workflow_hint}>
                   <a className="btn" href={`/api/takes/${shown.id}/workflow.json`} download>{t.workflow}</a>
@@ -469,7 +492,7 @@ export function AppRunner() {
           )}
 
           <div className="takes">
-            <h2 className="eyebrow"><b>04</b>{t.takes}</h2>
+            <h2 className="eyebrow">{t.takes}</h2>
             {takes.length === 0 ? <p className="takes-empty">{t.takes_empty}</p> : (
               <div className="take-list">
                 {takes.map((take) => (
@@ -491,13 +514,13 @@ export function AppRunner() {
               </div>
             )}
           </div>
+
+          <footer className="foot">
+            <span>{t.built_with}</span>
+            <span><b>RTX A4000 16 GB</b> · {t.foot_measured}</span>
+          </footer>
         </section>
       </main>
-
-      <footer className="foot">
-        <span>{t.built_with}</span>
-        <span><b>RTX A4000 16 GB</b> · {t.foot_measured}</span>
-      </footer>
     </div>
   );
 }
