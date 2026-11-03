@@ -55,7 +55,7 @@ def graph(model, image):
 
 
 def run(model, image):
-    entry, seconds, wall, _ = run_graph(graph(model, image))
+    entry, seconds, wall, _, _ = run_graph(graph(model, image))
     outputs = entry["outputs"]
     steps = {n: " ".join(" ".join(t for t in o.get("text", []) if isinstance(t, str)).split()) for n, o in outputs.items() if n != "out"}
     for n, t in steps.items():

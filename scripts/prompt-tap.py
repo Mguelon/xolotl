@@ -28,7 +28,7 @@ def main():
     if len(sys.argv) > 2:
         graph["direction"]["inputs"]["value"] = sys.argv[2]
     graph["tap"] = {"class_type": "PreviewAny", "inputs": {"source": link}}
-    entry, seconds, wall, _ = run(graph)
+    entry, seconds, wall, _, _ = run(graph)
     text = "".join(entry["outputs"]["tap"]["text"])
     print(f"nodes: {', '.join(sorted(graph))}\nComfyUI {seconds:.2f} s, total {wall:.2f} s, "
           f"{len(text)} characters\n---\n{text}\n---")

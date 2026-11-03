@@ -60,7 +60,7 @@ def main():
             upload(take / "clip.mp4", workflow[node]["inputs"]["file"])
     runs, kept = [], {}
     for i, variant in enumerate(ORDER, 1):
-        entry, seconds, wall, cached = run(graph(workflow, variant, f"xolotl-medidas/recover/{label}_{variant}_{i}"))
+        entry, seconds, wall, cached, _ = run(graph(workflow, variant, f"xolotl-medidas/recover/{label}_{variant}_{i}"))
         report = json.loads("".join(entry["outputs"]["report"]["text"]))
         frames = masks(entry)
         kept.setdefault(variant, []).append((frames, report))

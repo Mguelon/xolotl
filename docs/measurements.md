@@ -86,6 +86,24 @@ Through the app (`scripts/check-take.py`, the 5.1 s take above, before *Frame th
 
 `workflows/xolotl.api.json` run end to end as someone would from the editor (`scripts/standalone-run.py`: the clip in *Load Video*, the picture in *Load Image*, the default 5 s, queue): **5 min 27 s** (327.1 s), 720×1280 like the clip, 120 frames at 24 fps with its audio. Its own nodes wrote the prompt, and Gemma's description of the picture came out word for word the one the app wrote for it (take 2d45a004): the same model, greedy, at the same 1120 image tokens. The character holds through the five seconds (sheet in the measurement folder, `sin-app/`).
 
+Where a 5 s take's time goes, node by node (`scripts/standalone-run.py` now listens on ComfyUI's websocket and times every node from its `executing` message to the next; a second run of the same inputs after `/free`, which empties ComfyUI's node cache and unloads the models: 318.6 s, the 64 nodes that ran summing 318.6 s; `sin-app/tiempos-por-nodo.json`):
+
+| s | Node | What it is |
+|---|---|---|
+| 185.9 | SamplerCustomAdvanced (inside the pack's Controller) | H3's four steps, 2:59 at ~45 s a step, with ~7 s to load the 20 GB of H3 and start Veda |
+| 43.9 | H3CharacterSwapReference | the reference video through the VAE (~28 s), its audio, and Qwen3-VL, H3's text encoder (15 GB, ~15 s) |
+| 21.9 | SAM3_VideoTrack | SAM 3.1 tracking the person, first pass |
+| 17.1 | VAEDecode | decoding the window |
+| 8.3 | Xólotl · Find the Person on Empty Frames | 13 empty frames, one SAM call |
+| 6.4 | Xólotl · Restore Clip Size | the swap laid over the clip's own frames and encoded |
+| 5.0 | TextGenerate | Gemma describing the picture |
+| 3.0 + 2.9 | H3CharacterSwapPrepareVideo ×2 | the pack's preparation, both passes |
+| 2.3 | H3CharacterSwapMaskedRegeneration | 2.3 s because *Reuse VAE Encodes* spared the second encode |
+| 1.4 + 1.3 | Xólotl · Fit Clip on Canvas ×2 | the clip, then the crop, on the canvas |
+| 0.7 / 0.7 / 0.6 / 0.2 | Xólotl · Face Close-up / Masks onto the Crop / Grow the Person's Mask / Frame the Person | |
+
+Xólotl's ten nodes in this graph sum 19.6 s, 6 % of the take; the loaders take almost nothing because ComfyUI's dynamic VRAM loads the weights where they are used. Seven nodes of the template neither run nor come from the cache: the pack's own tracking on its canvas (102-107, the path the app takes only without Xólotl's nodes) and the `CreateVideo` of that path. The pack also keeps generated windows in RAM for 30 min (`relay/records.py`) and restores them instead of generating when the same shot comes back: a timing run must wait that out, or it measures a restore.
+
 ## Three nodes that save time
 
 Between the person's tracking and the first window the pack grows the person's mask by 64 px with scipy's exact distance transform, frame by frame, and also builds a colour overlay of the whole clip that nothing reads. `scripts/time-prep.py` times it in the container on 243 frames: 10.3 s at 896×512 and 22.4 s at 1024×768. Xólotl's *Grow the Person's Mask* gives the same masks (checked against scipy pixel for pixel, `comfy_nodes/xolotl/test_masks.py`) with OpenCV's exact distance transform over 8 threads, without the overlay: 1.3 s and 2.4 s. On the GPU the 5.1 s take (6dbe3ceb) came out **byte-identical** to the 5 min 34 s take (d431fad3), all 122 frames: the pipeline repeats bit for bit with the same seed, and the growth saved 4.5 s before the first window (18.0 s to 13.5 s).
