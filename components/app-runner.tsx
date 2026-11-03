@@ -5,6 +5,7 @@ import type { Progress } from "@comfyorg/sdk";
 import { EXAMPLES, type Example } from "../lib/examples";
 import { counted } from "../lib/i18n";
 import { useLang } from "../lib/use-lang";
+import type { CharacterMeta } from "../lib/characters";
 import { jobErrorMessage } from "../lib/job-error";
 import { CHARACTER_TAG, DEFAULT_STEPS, MAX_SECONDS, MIN_SECONDS, SIZES, type SwapSize } from "../lib/swap";
 import { estimateMinutes } from "../lib/estimates";
@@ -195,6 +196,29 @@ export function AppRunner() {
       if (describedFor.current === file) setDescribing(false);
     }
   }
+
+  // A character from the creator («Use in the swap» on /create): its chosen body, or its own picture when it has none.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("character");
+    if (!id) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    void (async () => {
+      setError(false); setMessage(t.loading_character);
+      try {
+        const response = await fetch(`/api/characters/${encodeURIComponent(id)}`);
+        if (!response.ok) throw new Error(t.err_character);
+        const meta = await response.json() as CharacterMeta;
+        const chosen = (step: "head" | "body") => meta.versions[step].find((v) => v.id === meta.chosen[step]) ?? meta.versions[step].at(-1);
+        const version = chosen("body") ?? chosen("head");
+        if (!version) throw new Error(t.err_character);
+        const extension = version.file.split(".").pop() ?? "png";
+        const type = extension === "jpg" ? "image/jpeg" : extension === "webp" ? "image/webp" : "image/png";
+        chooseCharacter(await fetchFile(`/api/characters/${meta.id}/files/${version.file}`, `${meta.name || "character"}.${extension}`, type));
+      } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : t.err_character); }
+    })();
+    // Once, on arrival: the strings are the language's and the setters never change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function chooseExample(example: Example) {
     setError(false); setMessage(t.loading_example);

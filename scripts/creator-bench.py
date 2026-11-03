@@ -7,8 +7,8 @@ atelier makes it (api/core/personaje.py, measured there 2026-10-13: the body in 
 the creator's buttons write her today, and an anthropomorphic black sheep (the mascot case: a character that walks on
 two legs like the person in the clip it will replace).
 
-For each subject: four heads with workflows/character-head.api.json, then the first head's full body with
-workflows/character-edit.api.json (2.1 Turbo editing, on a 1024×1792 canvas) and with atelier's grafo_2511 (2511 Q4_K_S +
+For each subject: four heads with creator-bench/qwen21-head.api.json, then the first head's full body with
+creator-bench/qwen21-edit.api.json (2.1 Turbo editing, on a 1024×1792 canvas) and with atelier's grafo_2511 (2511 Q4_K_S +
 Lightning 8 steps, same canvas, its own body prompts). Writes the pictures, a sheet of them side by side and bench.json
 (prompts, seeds, ComfyUI seconds per run) to CREATOR_BENCH_OUT.
 """
@@ -19,7 +19,8 @@ import shutil
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 from comfy_run import run, upload  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -80,8 +81,8 @@ def keep(paths, name):
 
 
 def main():
-    head_wf = json.loads((ROOT / "workflows/character-head.api.json").read_text())
-    body_wf = json.loads((ROOT / "workflows/character-edit.api.json").read_text())
+    head_wf = json.loads((HERE / "creator-bench/qwen21-head.api.json").read_text())
+    body_wf = json.loads((HERE / "creator-bench/qwen21-edit.api.json").read_text())
     report = {"seed": SEED, "runs": []}
     heads = {}
     for name, subject in SUBJECTS.items():

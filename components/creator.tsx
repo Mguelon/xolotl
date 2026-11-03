@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  GROUPS, SECONDS, SHEET_KINDS, STEPS, bodyPrompt, describeBody, editPrompt, headCount, headPrompt, initialPicks, word,
+  GROUPS, SECONDS, SHEET_KINDS, STEPS, bodyPrompt, editPrompt, headCount, headPrompt, initialPicks, word,
   type Group, type Picks, type Step, type Value,
 } from "../lib/character";
 import type { CharacterJob, CharacterMeta } from "../lib/characters";
@@ -19,6 +20,8 @@ const TERMINAL = new Set(["succeeded", "failed", "cancelled", "canceled", "error
 const running = (status: string) => !TERMINAL.has(status);
 const mmss = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const fileUrl = (id: string, file: string) => `/api/characters/${id}/files/${file}`;
+/** «20 s» under a minute, to the nearest five seconds; «2 min» from there. */
+const about = (seconds: number) => seconds < 60 ? `${Math.max(5, Math.round(seconds / 5) * 5)} s` : `${Math.round(seconds / 60)} min`;
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
@@ -116,8 +119,8 @@ function PictureDrop({ label, hint, drop, url, onPick }: { label: string; hint: 
  * The character creator: the head, then the body and its clothes, then the sheet (atelier's steps), each step with its
  * buttons on the right (Higgsfield's and Cheapsfield's way of choosing), the step's picture and its versions on the left,
  * and a box underneath to change anything on that picture in words. The step pressed is the mode: the box changes
- * that step's picture, and the page never moves to another step by itself. Everything runs on ComfyUI with Qwen-Image
- * 2.1 Turbo (lib/creator-comfy.ts); the character lives in data/characters (lib/characters.ts).
+ * that step's picture, and the page never moves to another step by itself. Everything runs on ComfyUI with FLUX.2
+ * [klein] 4B (lib/creator-comfy.ts); the character lives in data/characters (lib/characters.ts).
  */
 export function Creator() {
   const { lang, t, toggle } = useLang();
@@ -171,8 +174,8 @@ export function Creator() {
   const heads = headCount(picks.head);
   const eta = step === "head" && own ? t.cr_eta_picture
     : step === "head"
-    ? t.cr_eta_head.replace("{n}", String(heads)).replace("{m}", String(Math.max(1, Math.round((SECONDS.headLoad + heads * SECONDS.head) / 60))))
-    : t.cr_eta_minutes.replace("{m}", String(Math.max(1, Math.round((step === "body" ? SECONDS.body : picks.sheet.kind === "full" ? SECONDS.sheetFull : SECONDS.sheetSimple) / 60))));
+    ? t.cr_eta_head.replace("{n}", String(heads)).replace("{t}", about(SECONDS.headLoad + heads * SECONDS.head))
+    : t.cr_eta.replace("{t}", about(step === "body" ? SECONDS.body : picks.sheet.kind === "full" ? SECONDS.sheetFull : SECONDS.sheetSimple));
   const said = step === "head" ? headPrompt(picks.head) : step === "body" ? bodyPrompt(picks.head, picks.body) : "";
   const shown = GROUPS[step].filter((group) => !group.when || group.when(picks[step]));
 
@@ -308,6 +311,9 @@ export function Creator() {
   }, []);
 
   const round = picking ? versions.head.filter((v) => picking.includes(v.id)) : [];
+  // What the swap gets: the chosen body, or your own picture while there is no body yet (a full-body mascot needs none).
+  const pictureHead = character?.versions.head.find((v) => v.id === character.chosen.head)?.source === "picture";
+  const cast = chosenOf("body") ?? (pictureHead ? chosenOf("head") : null);
   const elapsed = job ? now - Date.parse(job.createdAt) : 0;
 
   return (
@@ -405,6 +411,9 @@ export function Creator() {
               </div>
             )}
             {notice && <p className="notice" role="status">{notice}</p>}
+            {character && cast && !busy && (
+              <Link className="use" href={`/swap?character=${character.id}`}>{t.cr_use} <span aria-hidden>→</span></Link>
+            )}
           </div>
 
           <form className="ask" onSubmit={(event) => { event.preventDefault(); void send(); }}>

@@ -4,8 +4,8 @@
  * The steps are atelier's (api/core/personaje.py): the head first, then the body and its clothes drawn around that
  * head, and last the sheet the swap casts from. The options are buttons, as Higgsfield's AI Influencer Studio and Soul
  * Cast and Cheapsfield's «Criar influencer» do it, instead of a prompt to write. Labels come in both interface languages;
- * what the model reads is always English. The style templates are atelier's (api/core/muestras.py ESTILOS), measured
- * there with Qwen-Image 2.1 Turbo at about 12 s a head (2026-10-15); their previews in public/styles are that run's.
+ * what the model reads is always English. The style templates are atelier's (api/core/muestras.py ESTILOS); the
+ * previews in public/styles are the creator's own heads in each style (scripts/style-previews.ts, FLUX.2 [klein] 4B).
  */
 import type { Lang } from "./i18n";
 
@@ -130,12 +130,12 @@ export const GROUPS: Record<Step, Group[]> = {
       { id: "natural", en: "As the animal does", es: "Como el animal", say: "" },
     ] },
     { id: "coat", kind: "one", en: "Covered in", es: "Cubierto de", when: kindIs("animal"), choices: [
-      { id: "fur", en: "Fur", es: "Pelaje", say: "fur" },
-      { id: "wool", en: "Wool", es: "Lana", say: "curly wool" },
-      { id: "feathers", en: "Feathers", es: "Plumas", say: "feathers" },
-      { id: "scales", en: "Scales", es: "Escamas", say: "scales" },
-      { id: "smooth", en: "Smooth skin", es: "Piel lisa", say: "smooth skin" },
-      { id: "shell", en: "Shell", es: "Caparazón", say: "a hard glossy shell" },
+      { id: "fur", en: "Fur", es: "Pelaje", say: "{color} fur" },
+      { id: "wool", en: "Wool", es: "Lana", say: "curly {color} wool" },
+      { id: "feathers", en: "Feathers", es: "Plumas", say: "{color} feathers" },
+      { id: "scales", en: "Scales", es: "Escamas", say: "{color} scales" },
+      { id: "smooth", en: "Smooth skin", es: "Piel lisa", say: "smooth {color} skin" },
+      { id: "shell", en: "Shell", es: "Caparazón", say: "a hard glossy {color} shell" },
     ] },
     { id: "coat_color", kind: "one", en: "Color", es: "Color", swatches: true, when: kindIs("animal"), choices: COLORS },
     { id: "hybrid", kind: "one", en: "Hybrid", es: "Híbrido", required: true, initial: "centaur", when: kindIs("hybrid"),
@@ -314,8 +314,9 @@ export const SHEET_KINDS: Record<string, Words> = {
   full: { en: "Five views on one floor line, the head at three angles, expressions and the palette.", es: "Cinco vistas sobre una línea de piso, la cabeza en tres ángulos, expresiones y la paleta." },
 };
 
-/** Measured in atelier (frontend/lib/personaje.ts, 2026-10-13 and 10-15): what each step usually takes on the A4000. */
-export const SECONDS = { head: 12, headLoad: 20, body: 120, sheetSimple: 115, sheetFull: 720 };
+/** What each step takes on the A4000. The head and the body: FLUX.2 [klein] 4B, measured 2026-11-03 (docs/measurements.md:
+ *  four heads in 18-24 s, a body in 15-16 s). The sheet: atelier's (frontend/lib/personaje.ts, 2026-10-13 and 10-15). */
+export const SECONDS = { head: 4, headLoad: 8, body: 16, sheetSimple: 115, sheetFull: 720 };
 
 export function initialPicks(step: Step): Picks {
   const picks: Picks = {};
@@ -345,22 +346,26 @@ const tidy = (s: string) => s.replace(/\s+/g, " ").replace(/\s+([,.])/g, "$1").t
 /** Who the character is, in the words the model reads: «an original, fictional 26-year-old woman of East Asian descent
  *  with fair skin, dark brown eyes, long wavy black hair, freckles and round glasses». Original and fictional on purpose
  *  (Cheapsfield's guard): the creator makes characters, never a likeness of a real person. */
+const article = (word: string) => (/^[aeiou]/i.test(word) ? "an" : "a");
+
 export function describeHead(picks: Picks): string {
   const extra = text(picks.extra);
   const tail = extra ? `, ${extra}` : "";
   if (picks.start === "picture") {
     const what = text(picks.what, 120);
-    return tidy(`the character in <image1>${what ? ` (${what})` : ""}`);
+    return tidy(`the character in image 1${what ? ` (${what})` : ""}`);
   }
   const kind = String(picks.kind || "person");
   if (kind === "animal") {
     const species = text(picks.species_other, 60) || choiceOf("head", "species", picks.species)?.say || "animal";
-    const coat = choiceOf("head", "coat", picks.coat)?.say;
     const color = choiceOf("head", "coat_color", picks.coat_color)?.say;
-    const covered = coat ? `${color ? `${color} ` : ""}${coat}` : color ? `${color} coloring` : "";
-    const traits = [covered, choiceOf("head", "eyes", picks.eyes)?.say].filter((t): t is string => !!t);
-    const who = picks.stance === "natural" ? species : `anthropomorphic ${species} character`;
-    return tidy(`an original, fictional ${who}${traits.length ? `, with ${list(traits)}` : ""}${tail}`);
+    const coat = choiceOf("head", "coat", picks.coat)?.say.replace("{color} ", color ? `${color} ` : "");
+    const eyes = choiceOf("head", "eyes", picks.eyes)?.say;
+    // The color goes with the animal («a black sheep»), or only the wool comes out black around a pale, human-looking
+    // face; an animal standing like a person keeps its animal face (klein 4B, 2026-11-03).
+    const animal = `${color ? `${color} ` : ""}${species}`;
+    const who = picks.stance === "natural" ? animal : `anthropomorphic ${animal} character with ${article(species)} ${species}'s face`;
+    return tidy(`an original, fictional ${who}${coat ? `, covered in ${coat}` : ""}${eyes ? `, with ${eyes}` : ""}${tail}`);
   }
   if (kind === "alien") {
     const color = choiceOf("head", "alien_color", picks.alien_color)?.say;
@@ -436,20 +441,20 @@ function pose(head: Picks): string {
   return "Standing upright in a relaxed natural pose facing the viewer, arms resting at the sides,";
 }
 
-/** The body around the chosen head (<image1>), on a 1024×1792 canvas: what workflows/character-edit.api.json reads.
- *  Measured 2026-11-02 (docs/measurements.md): 23 s with Qwen-Image 2.1 Turbo, the head's face kept. */
+/** The body around the chosen head (image 1), on a 1024×1792 canvas: what workflows/character-edit.api.json reads.
+ *  Measured 2026-11-03 (docs/measurements.md): 15-16 s with FLUX.2 [klein] 4B, the head's face kept. */
 export function bodyPrompt(head: Picks, body: Picks): string {
   const who = head.start === "picture"
     ? (text(head.what, 120) ? ` (${text(head.what, 120)})` : "")
     : `: ${describeHead(head)}`;
-  return tidy(`Full-body image of the same character as in <image1>${who}. ${describeBody(body, head)} ${pose(head)} the whole `
+  return tidy(`Full-body image of the same character as in image 1${who}. ${describeBody(body, head)} ${pose(head)} the whole `
     + "figure visible from head to toe with space above and below it. Plain light grey seamless studio background, soft "
-    + "even studio lighting. Keep exactly the same face, head, hair, colors, art style and rendering as <image1>.");
+    + "even studio lighting. Keep exactly the same face, head, hair, colors, art style and rendering as in image 1.");
 }
 
 /** A change asked in the box under the picture: only that, on the picture it is asked of (atelier's SOLO_ESO). */
 export function editPrompt(instruction: string): string {
   const asked = instruction.trim().replace(/\s+/g, " ").replace(/[.\s]+$/, "").slice(0, 400);
-  return `${asked}. Change only that and keep everything else exactly as it is in <image1>: the same character, face, `
+  return `${asked}. Change only that and keep everything else exactly as it is in image 1: the same character, face, `
     + "pose, framing, art style, background and lighting.";
 }

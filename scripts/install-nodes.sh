@@ -8,6 +8,8 @@
 #     D3voz's H3GreyMannequins, MIT) and a bigger image budget for Gemma 4, which described the character before Qwen3-VL 8B. Plain
 #     Python, OpenCV and ffmpeg, which ComfyUI needs anyway.
 #   - Akatz Labs' h3_character_swap (GPL-3.0): detection, tracking, masked regeneration and assembly.
+#   - city96's ComfyUI-GGUF (Apache 2.0): loads the character creator's FLUX.2 [klein] 4B, which comes as GGUF. Its one
+#     Python dependency: pip install 'gguf>=0.13.0' (in ComfyUI's Python).
 #   - Veda (MIT), learned sparse attention for H3: optional; without it a take runs full attention, about 11 % slower
 #     at 480p on an RTX A4000. It needs Triton, which ships with PyTorch on Linux (triton-windows on Windows).
 # The swap pack's Python deps (numpy, scipy, Pillow, opencv-python-headless) ship with most ComfyUI installs;
@@ -36,4 +38,8 @@ VEDA=67e4eb5541b648555563144401ebaba832bd73ec
 rm -rf "$COMFYUI_DIR/custom_nodes/Veda-on-ComfyUI"
 git clone -q https://github.com/veda-sparse/Veda-on-ComfyUI.git "$COMFYUI_DIR/custom_nodes/Veda-on-ComfyUI"
 git -C "$COMFYUI_DIR/custom_nodes/Veda-on-ComfyUI" checkout -q "$VEDA"
-echo "installed custom_nodes/xolotl, custom_nodes/h3_character_swap @ ${REV:0:7} and custom_nodes/Veda-on-ComfyUI @ ${VEDA:0:7} — restart ComfyUI, then: npm run doctor"
+GGUF=6ea2651e7df66d7585f6ffee804b20e92fb38b8a
+rm -rf "$COMFYUI_DIR/custom_nodes/ComfyUI-GGUF"
+git clone -q https://github.com/city96/ComfyUI-GGUF.git "$COMFYUI_DIR/custom_nodes/ComfyUI-GGUF"
+git -C "$COMFYUI_DIR/custom_nodes/ComfyUI-GGUF" checkout -q "$GGUF"
+echo "installed custom_nodes/xolotl, custom_nodes/h3_character_swap @ ${REV:0:7}, custom_nodes/ComfyUI-GGUF @ ${GGUF:0:7} and custom_nodes/Veda-on-ComfyUI @ ${VEDA:0:7} — restart ComfyUI, then: npm run doctor"

@@ -1,6 +1,7 @@
 /**
  * The creator's jobs on ComfyUI, through the same Comfy API v2 proxy as the swap: the heads (workflows/character-head),
- * and the body or a change (workflows/character-edit, Qwen-Image 2.1 Turbo editing the picture given as <image1>).
+ * and the body or a change (workflows/character-edit), all with FLUX.2 [klein] 4B: the picture worked from is its reference,
+ * «image 1» in the prompt.
  * A job's pictures become versions of its step the first time someone reads it finished.
  */
 import { readFile } from "node:fs/promises";
@@ -32,7 +33,7 @@ export async function submitHeads(id: string, request: { prompt: string; count: 
   const api = comfyClient();
   const graph = await workflow("head");
   const seed = request.seed ?? randomSeed();
-  graph["5"].inputs.prompt = request.prompt;
+  graph["5"].inputs.text = request.prompt;
   graph["6"].inputs.batch_size = Math.max(1, Math.min(4, Math.round(request.count)));
   graph["9"].inputs.noise_seed = seed;
   graph["13"].inputs.filename_prefix = `xolotl/character/${id.slice(0, 8)}-head`;
@@ -58,9 +59,9 @@ export async function submitEdit(id: string, request: {
   const seed = request.seed ?? randomSeed();
   const extension = source.file.split(".").pop() ?? "png";
   graph["20"].inputs.image = api.assets.fromBytes(bytes, { filename: source.file, contentType: FILE_TYPES[extension] ?? "image/png" });
-  graph["5"].inputs.prompt = request.prompt;
-  graph["6"].inputs.width = canvas.width;
-  graph["6"].inputs.height = canvas.height;
+  graph["5"].inputs.text = request.prompt;
+  // The empty latent and the scheduler, which shifts its sigmas by the canvas's size.
+  for (const node of ["6", "7"]) Object.assign(graph[node].inputs, canvas);
   graph["9"].inputs.noise_seed = seed;
   graph["13"].inputs.filename_prefix = `xolotl/character/${id.slice(0, 8)}-${request.step}`;
   const job = await api.submit(api.workflows.fromJson(graph));

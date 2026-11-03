@@ -487,7 +487,8 @@ textarea::placeholder { color: var(--text-3); }
 .creator .stage { --screen-h: clamp(300px, calc(100dvh - 318px), 880px); }
 .creator .panel { grid-template-rows: auto minmax(0, 1fr) auto; }
 /* The steps' labels run longer than the swap's one word: the button keeps to one line. */
-.creator .run { font-size: 14.5px; }
+.creator .run { font-size: 14px; letter-spacing: .04em; }
+.creator .run span { white-space: nowrap; }
 .run kbd { white-space: nowrap; }
 .opt-group input[type="text"] {
   width: 100%; padding: 10px 13px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--bg-0);
@@ -577,6 +578,15 @@ textarea::placeholder { color: var(--text-3); }
 .pick-grid button:hover { border-color: var(--line-strong); transform: translateY(-1px); }
 .pick-grid button[aria-pressed="true"] { border-color: var(--accent); }
 .pick-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.canvas .use {
+  position: absolute; right: 18px; bottom: 18px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 14px; text-decoration: none;
+  box-shadow: 0 8px 24px -10px var(--accent-deep); transition: transform .2s var(--ease-out), box-shadow .2s;
+}
+.canvas .use:hover { transform: translateY(-1px); box-shadow: 0 12px 28px -10px var(--accent-deep); }
+.canvas .use span { transition: transform .2s var(--ease-out); }
+.canvas .use:hover span { transform: translateX(2px); }
 .canvas .versions {
   position: absolute; left: 12px; top: 12px; bottom: 12px; width: 66px; z-index: 1;
   display: flex; flex-direction: column; gap: 8px; overflow-y: auto; scrollbar-width: none;

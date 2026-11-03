@@ -353,8 +353,8 @@ trousers end (Qwen had written "falling to the ankles"); it still calls this bow
 
 ## The character creator on one model (2026-11-02)
 
-The creator makes the head, then the full body around that head (`workflows/character-head.api.json` and
-`workflows/character-body.api.json`). The question was whether Qwen-Image 2.1 Turbo alone could do both, generating and
+The creator makes the head, then the full body around that head (then `workflows/character-head.api.json` and
+`workflows/character-body.api.json`; these Qwen graphs now live in `scripts/creator-bench/`). The question was whether Qwen-Image 2.1 Turbo alone could do both, generating and
 editing with the same 7.3 GB file as in its official templates, or whether the body needs Qwen-Image-Edit 2511 with
 Lightning, as in atelier. `scripts/creator-bench.py` ran both on two subjects, seed 20261103, on the RTX A4000:
 - a person, described as the creator's buttons write her;
@@ -376,6 +376,42 @@ paste:
 - **Downloads.** A user adds the 7.3 GB model and its 0.7 GB VAE. Its text encoder is the swap's describer, Qwen3-VL 8B,
   which Xólotl already installs.
 - **Licence.** Dropping FaceWarp also drops its insightface models, which are for non-commercial research only.
+
+Replaced the next day: Qwen-Image 2.1 itself is for non-commercial use only (next section).
+
+## The character creator on open-licence models (2026-11-03)
+
+Qwen-Image 2.1, the Turbo included, is under the Qwen Research License: "for non-commercial purposes only" (research
+or evaluation); commercial use needs a separate licence from Qwen. A character made for a business, such as a shop's
+mascot, is a commercial use, and the rest of Xólotl's stack is open. `scripts/creator-open-bench.py` ran the same two
+subjects, prompts and seed on Apache 2.0 models that were already on disk:
+
+| Step | FLUX.2 [klein] 4B, 4 steps | Z-Image Turbo, 8 steps | 2511 Q4_K_S + Lightning, 8 steps | Qwen-Image 2.1 Turbo (2026-11-02) |
+| --- | --- | --- | --- | --- |
+| Four heads, 1024², one batch (person, sheep) | 24.2 s (includes loading), 18.4 s | 46.5 s, 43.6 s (both include loading) | — | 40.8 s, 32.9 s |
+| Body around the first Z-Image head, 1024×1792 | 15.7 s, 14.9 s | — | 81.1 s, 72.7 s | 23.4 s, 22.6 s (around its own head) |
+| A change to that body in words, 1024×1792 | 15.4 s, 15.4 s | — | 76.5 s, 73.0 s | 29.3-30.0 s through the app |
+
+What the pictures show (`hoja.jpg` in `medidas/creador-abierto`):
+- **Identity.** klein keeps the head's face in the body as closely as 2.1 did: the freckles, the eyes and the hair; the
+  sheep's horns, eyes and smile. 2511 keeps it too.
+- **The sheep.** klein gives it dark, hoof-like hands, as 2.1 did. 2511 gives it human hands.
+- **The change.** Both editors turn the t-shirt or the hoodie red and keep everything else.
+- **Heads.** Z-Image draws the freckles the prompt asks for, which 2.1 left out. klein's heads are on a par with 2.1's.
+
+The creator now runs on FLUX.2 [klein] 4B for all three steps (`workflows/character-head.api.json` and
+`workflows/character-edit.api.json`): Apache 2.0, the fastest at every step, and one model, as before.
+- **Files.** The weights are unsloth's BF16 GGUF, loaded with ComfyUI-GGUF. atelier already used that same file here,
+  so nothing was downloaded. The encoder and the VAE are byte-identical to Comfy-Org/Flux-2-Klein-4B.
+- **Through the app** (`scripts/check-character.ts`, the sheep, two runs): four heads in 19.9-21.4 s, the body in
+  16.0-16.4 s, a change in 15.5-17.0 s.
+- **The animal's description.** With «anthropomorphic sheep character, with black curly wool», klein drew black wool
+  around a pale, human-looking face, and human hands. The color now goes with the animal, «anthropomorphic black sheep
+  character with a sheep's face, covered in curly black wool».
+
+FLUX 3 Image Klein (Black Forest Labs, 2026-10-15) is newer. Its FLUX Kommunity License makes commercial use free only
+below US$5 million of yearly revenue, with content-filter and AI-disclosure terms. It is not on disk (5.8 + 4.9 GB)
+and was not measured.
 
 ## 768p with the default recipe
 
