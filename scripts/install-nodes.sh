@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 # Installs the node packs Xólotl's workflow uses into your ComfyUI, at the revisions Xólotl was tested with:
-#   - Xólotl's own eleven nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around
+#   - Xólotl's own ten nodes (comfy_nodes/xolotl in this repo): the clip on the model's canvas, the crop around
 #     the person, the person found again where SAM's tracking lost them, the first pass's masks carried onto that
 #     crop, the person's mask grown, the VAE without the pack's repeated encode, the result back at the clip's own
 #     size and place, the close-up of the character's face
 #     (OpenCV's YuNet, MIT, bundled in models/), the clip's person as a grey mannequin for the motion (after
-#     D3voz's H3GreyMannequins, MIT), the clip's calmest face for LivePortrait and a bigger image budget for Gemma 4,
-#     which describes the character. Plain Python, OpenCV and ffmpeg,
-#     which ComfyUI needs anyway.
-#   - Kijai's ComfyUI-LivePortraitKJ (MIT), for the gestures pass: the clip's pouts, winks and smiles on the
-#     character's face. Its face detector is BlazeFace with face-alignment (no InsightFace, whose models are
-#     non-commercial). It needs pykalman and onnxruntime; its own requirements file pins numpy<=1.26.4, which a
-#     current ComfyUI does not run with, so it is not installed. Without the pack a take runs without gestures.
+#     D3voz's H3GreyMannequins, MIT) and a bigger image budget for Gemma 4, which describes the character. Plain
+#     Python, OpenCV and ffmpeg, which ComfyUI needs anyway.
 #   - Akatz Labs' h3_character_swap (GPL-3.0): detection, tracking, masked regeneration and assembly.
 #   - Veda (MIT), learned sparse attention for H3: optional; without it a take runs full attention, about 11 % slower
 #     at 480p on an RTX A4000. It needs Triton, which ships with PyTorch on Linux (triton-windows on Windows).
@@ -27,7 +22,6 @@ rm -rf "$COMFYUI_DIR/custom_nodes/xolotl"
 mkdir -p "$COMFYUI_DIR/custom_nodes/xolotl"
 cp "$HERE/comfy_nodes/xolotl/__init__.py" "$HERE/comfy_nodes/xolotl/nodes.py" "$HERE/comfy_nodes/xolotl/geometry.py" \
   "$HERE/comfy_nodes/xolotl/reuse.py" "$HERE/comfy_nodes/xolotl/masks.py" "$HERE/comfy_nodes/xolotl/mannequin.py" \
-  "$HERE/comfy_nodes/xolotl/expressions.py" \
   "$COMFYUI_DIR/custom_nodes/xolotl/"
 cp -R "$HERE/comfy_nodes/xolotl/models" "$COMFYUI_DIR/custom_nodes/xolotl/"
 REV=0670e4fdf95adf2262caa4b81afed2a9c4ae4b7b
@@ -42,10 +36,4 @@ VEDA=67e4eb5541b648555563144401ebaba832bd73ec
 rm -rf "$COMFYUI_DIR/custom_nodes/Veda-on-ComfyUI"
 git clone -q https://github.com/veda-sparse/Veda-on-ComfyUI.git "$COMFYUI_DIR/custom_nodes/Veda-on-ComfyUI"
 git -C "$COMFYUI_DIR/custom_nodes/Veda-on-ComfyUI" checkout -q "$VEDA"
-LIVEPORTRAIT=01b9705a7dff2b00543c41d003d5335230a00346  # the registry's 1.1.0, the version Xólotl was tested with
-rm -rf "$COMFYUI_DIR/custom_nodes/comfyui-liveportraitkj"
-git clone -q https://github.com/kijai/ComfyUI-LivePortraitKJ.git "$COMFYUI_DIR/custom_nodes/comfyui-liveportraitkj"
-git -C "$COMFYUI_DIR/custom_nodes/comfyui-liveportraitkj" checkout -q "$LIVEPORTRAIT"
-PYTHON="${COMFYUI_PYTHON:-python3}"
-"$PYTHON" -m pip install -q pykalman onnxruntime || echo "install pykalman and onnxruntime into ComfyUI's Python (COMFYUI_PYTHON=...)"
-echo "installed custom_nodes/xolotl, custom_nodes/h3_character_swap @ ${REV:0:7}, custom_nodes/Veda-on-ComfyUI @ ${VEDA:0:7} and custom_nodes/comfyui-liveportraitkj @ ${LIVEPORTRAIT:0:7} — restart ComfyUI, then: npm run doctor"
+echo "installed custom_nodes/xolotl, custom_nodes/h3_character_swap @ ${REV:0:7} and custom_nodes/Veda-on-ComfyUI @ ${VEDA:0:7} — restart ComfyUI, then: npm run doctor"

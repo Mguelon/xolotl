@@ -70,7 +70,6 @@ test("fits the recipe to what ComfyUI has installed", () => {
   const all: Installed = {
     diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae],
     vedaPredictors: ["minimax_h3_r2va_veda_preview_fp8.safetensors"], vedaNode: true, xolotl: [...XOLOTL_NODES],
-    livePortrait: true,
   };
   const fit = (installed: Installed, graph = template) => fitToInstalled(structuredClone(graph), installed);
   assert.deepEqual(fit(all), template, "everything installed: the template as it is");
@@ -98,10 +97,6 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.equal(noRecover.map.class_type, "XolotlMapMasks", "the rest of the first pass stays");
   assert.equal(noGrow.restore.class_type, "XolotlRestoreSize", "the rest of Xólotl's path stays");
   assert.equal(fit(without("XolotlMapMasks")).restore, undefined, "a missing core node: the pack's own path");
-  const noLivePortrait = fit({ ...all, livePortrait: false });
-  assert.equal(noLivePortrait.lp, undefined);
-  assert.deepEqual(noLivePortrait.restore.inputs.images, ["807", 0], "the swap as the pack assembled it");
-  assert.equal(fit(without("XolotlNeutralFace")).lp_pair, undefined);
   const noMannequin = fit(without("XolotlMannequin"));
   assert.equal(noMannequin.mannequin, undefined);
   assert.deepEqual(noMannequin["803"].inputs.source, ["31", 0], "H3 reads the clip as it is");
@@ -115,7 +110,6 @@ test("fits the recipe to what ComfyUI has installed", () => {
   assert.equal(bare.restore, undefined);
   assert.equal(bare.face, undefined);
   assert.equal(bare.mannequin, undefined, "without Xólotl's nodes there is no mannequin either");
-  assert.equal(bare.lp, undefined, "nor a gestures pass");
   assert.deepEqual(bare["31"].inputs.video, ["trim", 0], "the pack reads the clip itself");
   assert.deepEqual(bare["809"].inputs.video, ["808", 0], "and the result is saved at its canvas size");
   for (const id of ["fit0", "31a", "102a", "103a", "104a", "105a", "106a", "107a", "box", "map"]) assert.equal(bare[id], undefined, `${id} goes too`);
@@ -201,28 +195,11 @@ test("shows H3 the person as a grey mannequin when asked", () => {
   assert.deepEqual(graph.mannequin.inputs.images, ["31", 0]);
   assert.deepEqual(graph.mannequin.inputs.masks, ["map", 0], "the person's own silhouette, not the grown mask");
   assert.deepEqual(graph["803"].inputs.source, ["mannequin", 0]);
-  assert.ok(swapWorkflow(template, { ...request, mannequin: true, gestures: false }).mannequin, "with or without the gestures");
   const partial = fitToInstalled(structuredClone(template), {
     diffusionModels: [...PREFERRED.unet], vaes: [...PREFERRED.vae], vedaPredictors: [], vedaNode: false,
-    xolotl: ["XolotlMannequin", "XolotlFaceCrop", "XolotlGrowMasks"], livePortrait: false,
+    xolotl: ["XolotlMannequin", "XolotlFaceCrop", "XolotlGrowMasks"],
   });
   assert.deepEqual(partial.mannequin.inputs.masks, ["107", 0], "without the first pass it follows the pack's tracking");
-});
-
-test("runs LivePortrait's gestures pass only when asked, against the clip's calmest face", () => {
-  const graph = swapWorkflow(template, { ...request, gestures: true });
-  assert.deepEqual(graph.lp_pair.inputs, { swap: ["807", 0], clip: ["31", 0], source_frames: ["31", 5] });
-  assert.deepEqual(graph.lp.inputs.source_image, ["lp_pair", 0], "the swap's faces get the motion");
-  assert.deepEqual(graph.lp.inputs.driving_images, ["lp_crop_clip", 0], "from the clip's faces");
-  assert.equal(graph.lp.inputs.relative_motion_mode, "source_video_smoothed");
-  assert.deepEqual([graph.lp_frames.inputs.batch_index, graph.lp_frames.inputs.length], [1, ["31", 5]], "the calm frame goes");
-  assert.deepEqual(graph.restore.inputs.images, ["lp_frames", 0], "before it goes back to the clip's size");
-  const calm = swapWorkflow(template, request);
-  for (const id of ["lp_pair", "lp_models", "lp_detector", "lp_crop_swap", "lp_crop_clip", "lp", "lp_paste", "lp_frames"]) {
-    assert.equal(calm[id], undefined, `${id} goes without the gestures`);
-  }
-  assert.deepEqual(calm.restore.inputs.images, ["807", 0]);
-  assert.ok(template.lp, "the template stays untouched");
 });
 
 test("drops the first-frame nodes when there is none", () => {
@@ -289,7 +266,7 @@ test("the workflow for ComfyUI without the app is the app's default take, writin
   assert.deepEqual(file, standaloneWorkflow(template), "write it again with scripts/standalone.ts after changing the template");
   assert.deepEqual(file["801"].inputs.prompt, ["prompt_trim", 0], "Gemma and Format Text write the prompt");
   for (const id of PROMPT_NODES) assert.deepEqual(file[id], template[id], `${id} as in the template`);
-  for (const id of ["mannequin", "lp", "anchor_image"]) assert.equal(file[id], undefined, `no ${id}, as the app by default`);
+  for (const id of ["mannequin", "anchor_image"]) assert.equal(file[id], undefined, `no ${id}, as the app by default`);
   assert.equal(file["803"].inputs.use_anchor, false);
   assert.deepEqual(file.trim.inputs.duration, ["seconds", 0], "one Seconds node for the part");
   assert.deepEqual(file["31"].inputs.duration_seconds, ["seconds", 0]);
@@ -305,11 +282,9 @@ test("reads and checks the settings", () => {
   };
   assert.deepEqual(readSettings(form({ start: "1.234", seconds: "5", size: "480p", seed: "7", direction: "x" })), {
     start: 1.23, seconds: 5, size: "480p", seed: 7, description: "", direction: "x", person: "", steps: 4, turbo: true,
-    gestures: false, mannequin: false,
+    mannequin: false,
   });
   assert.equal(readSettings(form({ seconds: "5", size: "480p", description: "The character is tall." })).description, "The character is tall.");
-  assert.equal(readSettings(form({ seconds: "5", size: "480p", gestures: "on" })).gestures, true);
-  assert.throws(() => readSettings(form({ seconds: "5", size: "480p", gestures: "maybe" })), /gestures must be/);
   assert.equal(readSettings(form({ seconds: "5", size: "480p" })).mannequin, false, "the mannequin is off by default");
   assert.equal(readSettings(form({ seconds: "5", size: "480p", mannequin: "on" })).mannequin, true);
   assert.throws(() => readSettings(form({ seconds: "5", size: "480p", mannequin: "maybe" })), /mannequin must be/);
@@ -340,6 +315,5 @@ test("estimates minutes from the measured tracking, window and step times", () =
   assert.deepEqual(estimateMinutes("480p", 5, 20), [14, 19]);
   assert.deepEqual(estimateMinutes("768p", 5.1), [7, 9], "measured 7:58");
   assert.equal(estimateMinutes("768p", 10), null, "two windows at 768p are not measured yet");
-  assert.deepEqual(estimateMinutes("480p", 13), [14, 19], "13 s without gestures: measured 17:21");
-  assert.deepEqual(estimateMinutes("480p", 13, 4, true), [17, 22], "with the gestures pass: measured 20:12");
+  assert.deepEqual(estimateMinutes("480p", 13), [14, 19], "measured 17:21");
 });

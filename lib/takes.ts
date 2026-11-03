@@ -13,7 +13,6 @@ export type TakeSettings = {
   direction: string;
   steps?: number;
   turbo?: boolean;
-  gestures?: boolean;
   mannequin?: boolean;
   person?: string;
 };

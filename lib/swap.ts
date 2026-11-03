@@ -41,9 +41,6 @@ export type SwapRequest = {
   steps?: number;
   /** false drops the turbo LoRA: full sampling, as in H3's official template (20 steps). */
   turbo?: boolean;
-  /** true adds LivePortrait's pass, an experiment off by default: it gives the mannequin's calm face the clip's pouts and
-   * winks, and smears the hands near the face and turns the head twice (docs/measurements.md, "The gestures back"). */
-  gestures?: boolean;
   /** true shows H3 the clip's person as a grey mannequin, an option off by default: it keeps the performer's looks out,
    * and with them her gestures; the character described in `description` keeps her looks out and the gestures in
    * (docs/measurements.md, "The character described"). */
@@ -128,28 +125,12 @@ export type Installed = {
   vedaNode: boolean;
   /** The Xólotl nodes ComfyUI loaded (XOLOTL_NODES), by class name. */
   xolotl: string[];
-  /** Whether Kijai's LivePortrait nodes loaded (the gestures pass). */
-  livePortrait: boolean;
 };
 
-/** Xólotl's nodes. The first four give the result back at the clip's size, the next three only save time, the
- * next two keep the character's looks (its face up close, the clip's person as a grey mannequin) and the last gives
- * LivePortrait the clip's calmest face for the gestures. */
+/** Xólotl's nodes. The first four give the result back at the clip's size, the next three only save time, and the
+ * last two keep the character's looks: its face up close, and the clip's person as a grey mannequin. */
 export const XOLOTL_NODES = ["XolotlFitVideo", "XolotlPersonBox", "XolotlMapMasks", "XolotlRestoreSize",
-  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlRecoverMasks", "XolotlFaceCrop", "XolotlMannequin",
-  "XolotlNeutralFace"] as const;
-
-/** LivePortrait's pass over the swap on the canvas, before it goes back to the clip's size: the clip's calmest face
- * first, both faces cropped, the clip's expressions onto the character's face, pasted back, the calm frame dropped. */
-const GESTURES = ["lp_pair", "lp_models", "lp_detector", "lp_crop_swap", "lp_crop_clip", "lp", "lp_paste", "lp_frames"];
-
-/** The swap goes back to the clip's size as the pack assembled it: no gestures pass. */
-function dropGestures(graph: Graph) {
-  if (!graph.lp_frames) return;
-  const images = graph.restore?.inputs.images;
-  if (Array.isArray(images) && images[0] === "lp_frames") graph.restore.inputs.images = graph.lp_pair.inputs.swap;
-  for (const id of GESTURES) delete graph[id];
-}
+  "XolotlGrowMasks", "XolotlReuseEncodes", "XolotlRecoverMasks", "XolotlFaceCrop", "XolotlMannequin"] as const;
 
 /** H3 reads the clip as it is: the pack's source straight from PrepareVideo. */
 function dropMannequin(graph: Graph) {
@@ -185,7 +166,6 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
   const has = (name: string) => installed.xolotl.includes(name);
   if (graph.reuse && !has("XolotlReuseEncodes")) bypass(graph, "reuse", graph.reuse.inputs.vae);
   if (!has("XolotlMannequin")) dropMannequin(graph);
-  if (!installed.livePortrait || !has("XolotlNeutralFace")) dropGestures(graph);
   if (graph.face && !has("XolotlFaceCrop")) {
     delete graph.face; // the take runs on the full picture alone, and the prompt leaves the close-up out
     delete graph["803"].inputs.segment_reference;
@@ -197,7 +177,6 @@ export function fitToInstalled(graph: Graph, installed: Installed): Graph {
     graph["107a"].class_type = "H3CharacterSwapRecoverMasks"; // the pack's own, same inputs, SAM loaded a frame at a time
   }
   if (graph.restore && !XOLOTL_NODES.slice(0, 4).every(has)) {
-    dropGestures(graph);
     bypass(graph, "restore", ["808", 0]);
     bypass(graph, "fit", graph.fit.inputs.video);
     graph["110"].inputs.masks = ["107", 0]; // the pack tracks the person on its own canvas
@@ -241,7 +220,6 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
     bypass(graph, "4");
     Object.assign(graph["801"].inputs, FULL_SAMPLING);
   }
-  if (!request.gestures) dropGestures(graph);
   if (!request.mannequin) dropMannequin(graph);
   dropPromptNodes(graph);
   if (request.anchor !== undefined) {
@@ -257,9 +235,9 @@ export function swapWorkflow(template: Graph, request: SwapRequest): Graph {
 
 /**
  * The workflow for ComfyUI without the app (workflows/xolotl.api.json): the app's default take (480p, no mannequin,
- * no gestures pass, no first frame) with the nodes that describe the picture and write the prompt kept, and one
- * Seconds node for the part's length, which the slice and both Prepare nodes read. Choose a clip and a picture and
- * queue it. scripts/standalone.ts writes the file from the template; a test keeps the two in step.
+ * no first frame) with the nodes that describe the picture and write the prompt kept, and one Seconds node for the
+ * part's length, which the slice and both Prepare nodes read. Choose a clip and a picture and queue it.
+ * scripts/standalone.ts writes the file from the template; a test keeps the two in step.
  */
 export function standaloneWorkflow(template: Graph, seconds = 5): Graph {
   const graph = swapWorkflow(template, {
@@ -284,7 +262,6 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   const person = form.get("person");
   const stepsText = String(form.get("steps") ?? "").trim();
   const turboText = String(form.get("turbo") ?? "").trim().toLowerCase();
-  const gesturesText = String(form.get("gestures") ?? "").trim().toLowerCase();
   const mannequinText = String(form.get("mannequin") ?? "").trim().toLowerCase();
   if (!Number.isFinite(start) || start < 0) throw new Error("Choose where the part starts.");
   if (!Number.isFinite(seconds) || seconds < MIN_SECONDS || seconds > MAX_SECONDS) {
@@ -297,14 +274,11 @@ export function readSettings(form: FormData): Omit<SwapRequest, "video" | "chara
   if (!Number.isInteger(steps) || steps < 1 || steps > MAX_STEPS) throw new Error(`Steps must be a whole number from 1 to ${MAX_STEPS}.`);
   if (turboText && !["on", "off", "true", "false", "1", "0"].includes(turboText)) throw new Error("turbo must be on or off.");
   const turbo = !["off", "false", "0"].includes(turboText);
-  if (gesturesText && !["on", "off", "true", "false", "1", "0"].includes(gesturesText)) throw new Error("gestures must be on or off.");
-  const gestures = ["on", "true", "1"].includes(gesturesText);
   if (mannequinText && !["on", "off", "true", "false", "1", "0"].includes(mannequinText)) throw new Error("mannequin must be on or off.");
   const mannequin = ["on", "true", "1"].includes(mannequinText);
   return {
     steps,
     turbo,
-    gestures,
     mannequin,
     start: Math.round(start * 100) / 100,
     seconds: Math.round(seconds * 100) / 100,

@@ -37,18 +37,6 @@ export const TIMING: Record<SwapSize, Timing | null> = {
  */
 export const FINISH: Record<SwapSize, number> = { "480p": 30, "768p": 48 };
 
-/**
- * LivePortrait's gestures pass, per second of clip, in the finish: on the canvas before the swap goes back to the
- * clip's size, so the same at either size as far as measured. 331ce285, 13 s at 480p with it: 20 min 12 s;
- * 7fd9d6f5, the same take without it: 17 min 21 s. 171 s, 13.2 s per second.
- */
-export const GESTURES_PER_SECOND = 13.2;
-
-/** Seconds from the last step to the saved video, with the gestures pass when it runs. */
-function finish(size: SwapSize, seconds: number, gestures: boolean): number {
-  return FINISH[size] + (gestures ? GESTURES_PER_SECOND * seconds : 0);
-}
-
 /** How many H3 windows the pack plans: 124 frames at 24 fps, then 123 new frames per window after 18 of history. */
 export function windowCount(seconds: number): number {
   const frames = Math.floor(seconds * 24);
@@ -60,20 +48,20 @@ export function windowCount(seconds: number): number {
  * time to the tight one's, and 5 % either way for what one run does not share with another (a cold ComfyUI loads
  * every model first).
  */
-export function estimateMinutes(size: SwapSize, seconds: number, steps = DEFAULT_STEPS, gestures = false): [number, number] | null {
-  const total = estimateSeconds(size, seconds, steps, gestures);
+export function estimateMinutes(size: SwapSize, seconds: number, steps = DEFAULT_STEPS): [number, number] | null {
+  const total = estimateSeconds(size, seconds, steps);
   return total && [Math.max(1, Math.floor((total[0] * 0.95) / 60)), Math.ceil((total[1] * 1.05) / 60)];
 }
 
 /** The take's seconds from the loose crop's step time to the tight one's, or null when that size is not measured. */
-function estimateSeconds(size: SwapSize, seconds: number, steps: number, gestures = false): [number, number] | null {
+function estimateSeconds(size: SwapSize, seconds: number, steps: number): [number, number] | null {
   const timing = TIMING[size];
   if (!timing || !(seconds > 0)) return null;
   const later = windowCount(seconds) - 1;
   if (later && timing.laterFixed === null) return null;
   const laterFixed = timing.laterFixed ?? 0;
   const total = (perStep: number) => timing.trackingPerSecond * seconds + timing.firstFixed + steps * perStep
-    + later * (laterFixed + steps * perStep * timing.history) + (gestures ? GESTURES_PER_SECOND * seconds : 0);
+    + later * (laterFixed + steps * perStep * timing.history);
   return [total(timing.perStep[0]), total(timing.perStep[1])];
 }
 
@@ -82,23 +70,21 @@ function estimateSeconds(size: SwapSize, seconds: number, steps: number, gesture
  * samples: ComfyUI's own count for the window's steps left, the windows after it at the step time ComfyUI measures,
  * and the finish. Before its first step: the measured total less what has passed, never less than the sampling ahead.
  */
-export function remainingSeconds(size: SwapSize, seconds: number, stage: Stage, elapsed: number,
-  gestures = false): number | null {
+export function remainingSeconds(size: SwapSize, seconds: number, stage: Stage, elapsed: number): number | null {
   const timing = TIMING[size];
-  const end = finish(size, seconds, gestures);
   if (!timing || stage.name === "finish") return null;
   const perStep = stage.secondsPerStep ?? (timing.perStep[0] + timing.perStep[1]) / 2;
   // what a later window adds: its encoding and the previous one's decode, then its steps with 18 frames of history;
   // not measured at 768p, where the first window's fixed part stands in
   const laterWindow = (timing.laterFixed ?? timing.firstFixed) + stage.steps * perStep * timing.history;
   if (stage.name === "sample" && stage.windowLeft !== null) {
-    return stage.windowLeft + (stage.windows - stage.window) * laterWindow + end;
+    return stage.windowLeft + (stage.windows - stage.window) * laterWindow + FINISH[size];
   }
   if (stage.window > 1 || stage.step === stage.steps) {
     const ahead = stage.windows - stage.window + (stage.step === stage.steps ? 0 : 1);
-    return ahead * laterWindow + end;
+    return ahead * laterWindow + FINISH[size];
   }
-  const ahead = stage.steps * perStep + (stage.windows - 1) * laterWindow + end;
-  const total = estimateSeconds(size, seconds, stage.steps, gestures);
+  const ahead = stage.steps * perStep + (stage.windows - 1) * laterWindow + FINISH[size];
+  const total = estimateSeconds(size, seconds, stage.steps);
   return total ? Math.max((total[0] + total[1]) / 2 - elapsed, ahead) : ahead;
 }

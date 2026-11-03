@@ -107,9 +107,9 @@ export async function comfyInstalled(): Promise<Installed | null> {
     return response.ok ? response.json() : null;
   };
   try {
-    const [diffusionModels, vaes, vedaPredictors, veda, livePortrait, ...xolotl] = await Promise.all([
+    const [diffusionModels, vaes, vedaPredictors, veda, ...xolotl] = await Promise.all([
       get("/models/diffusion_models"), get("/models/vae"), get("/models/veda"), get("/object_info/VedaSparseAttention"),
-      get("/object_info/LivePortraitProcess"), ...XOLOTL_NODES.map((name) => get(`/object_info/${name}`)),
+      ...XOLOTL_NODES.map((name) => get(`/object_info/${name}`)),
     ]);
     const loaded = (info: unknown) => !!info && typeof info === "object" && Object.keys(info).length > 0;
     if (!Array.isArray(diffusionModels) || !Array.isArray(vaes)) return null;
@@ -119,7 +119,6 @@ export async function comfyInstalled(): Promise<Installed | null> {
       vedaPredictors: Array.isArray(vedaPredictors) ? vedaPredictors : [],
       vedaNode: loaded(veda),
       xolotl: XOLOTL_NODES.filter((_, i) => loaded(xolotl[i])),
-      livePortrait: loaded(livePortrait),
     };
   } catch { return null; }
 }

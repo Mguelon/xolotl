@@ -458,7 +458,7 @@ export function AppRunner() {
                 )}
                 {(active || busy) && !error && remaining === null && stage?.name !== "finish" && (() => {
                   const settings = job?.take?.settings;
-                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS, settings.gestures ?? false) : estimateMinutes(size, seconds);
+                  const estimate = settings ? estimateMinutes(settings.size as SwapSize, settings.seconds, settings.steps ?? DEFAULT_STEPS) : estimateMinutes(size, seconds);
                   return <span>{estimate ? t.eta_for.replace("{a}", String(estimate[0])).replace("{b}", String(estimate[1])) : t.eta_hint}</span>;
                 })()}
               </div>

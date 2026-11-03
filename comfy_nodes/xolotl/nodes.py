@@ -10,7 +10,6 @@ Person Mask does, in a fraction of the time, XolotlReuseEncodes keeps the pack f
 and XolotlRecoverMasks finds the person where the tracking lost them as the pack does, with SAM loaded once a batch.
 XolotlFaceCrop cuts the character's face from its picture and enlarges it, the close-up that keeps it on the person.
 XolotlMannequin turns the clip's person grey in the reference H3 copies the motion from, so it does not copy their looks.
-XolotlNeutralFace gives LivePortrait the clip's calmest face to measure the gestures against.
 
 Both nodes cut and decode the original file with the same ffmpeg options, so they see the same frames, and neither
 goes through the H.264 copy ComfyUI makes of a sliced clip. ffmpeg does the pixel work, as in the pack, so a long
@@ -33,7 +32,6 @@ import torch.nn.functional as F
 from comfy_api.latest._input_impl.video_types import VideoFromFile
 
 from .geometry import PIXEL_BUDGETS, face_square, fit_canvas, person_box
-from .expressions import neutral_index
 from .mannequin import mannequins
 from .masks import grow as grow_masks
 from .reuse import reusing_encodes
@@ -525,32 +523,6 @@ class XolotlMannequin:
         return (torch.from_numpy(mannequins(frames, people[:len(frames)], str(YUNET) if faces else None, face_blur)),)
 
 
-class XolotlNeutralFace:
-    """Puts the clip's calmest frame first, in the swap and in the clip, for LivePortrait to measure the gestures
-    against (expressions.py): with the clip's own first frame, a clip that opens on a pout never passes it on.
-    Both batches are cut to the clip's frames; drop the first frame of LivePortrait's result.
-    """
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {"required": {"swap": ("IMAGE",), "clip": ("IMAGE",),
-                             "source_frames": ("INT", {"default": 120, "min": 1})}}
-
-    RETURN_TYPES = ("IMAGE", "IMAGE", "INT")
-    RETURN_NAMES = ("swap", "clip", "neutral_frame")
-    FUNCTION = "pick"
-    CATEGORY = "Xólotl"
-
-    def pick(self, swap, clip, source_frames):
-        import cv2
-
-        count = min(source_frames, len(swap), len(clip))
-        detector = cv2.FaceDetectorYN.create(str(YUNET), "", (320, 320), 0.6, 0.3, 50)
-        index = neutral_index(clip[:count, ..., :3].float().cpu().numpy(), detector)
-        logging.info("Xólotl: the clip's calmest face is frame %d of %d, LivePortrait's reference", index, count)
-        return (torch.cat([swap[index:index + 1], swap[:count]]), torch.cat([clip[index:index + 1], clip[:count]]), index)
-
-
 class XolotlImageDetail:
     """Lets Gemma 4 see more of a picture. ComfyUI's Generate Text gives it 280 tokens per image, about 0.65 MP
     (comfy/text_encoders/gemma4.py, max_soft_tokens), where Renata's face is 72 px wide; its vision encoder takes up to
@@ -584,7 +556,7 @@ NODE_CLASS_MAPPINGS = {"XolotlFitVideo": XolotlFitVideo, "XolotlPersonBox": Xolo
                        "XolotlGrowMasks": XolotlGrowMasks, "XolotlReuseEncodes": XolotlReuseEncodes,
                        "XolotlRecoverMasks": XolotlRecoverMasks,
                        "XolotlFaceCrop": XolotlFaceCrop, "XolotlMannequin": XolotlMannequin,
-                       "XolotlNeutralFace": XolotlNeutralFace, "XolotlImageDetail": XolotlImageDetail}
+                       "XolotlImageDetail": XolotlImageDetail}
 NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlPersonBox": "Xólotl · Frame the Person",
                               "XolotlMapMasks": "Xólotl · Masks onto the Crop",
@@ -594,5 +566,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {"XolotlFitVideo": "Xólotl · Fit Clip on Canvas",
                               "XolotlRecoverMasks": "Xólotl · Find the Person on Empty Frames",
                               "XolotlFaceCrop": "Xólotl · Character Face Close-up",
                               "XolotlMannequin": "Xólotl · Grey Mannequin for the Motion",
-                              "XolotlNeutralFace": "Xólotl · The Clip's Calmest Face First",
                               "XolotlImageDetail": "Xólotl · Let Gemma See More of the Picture"}

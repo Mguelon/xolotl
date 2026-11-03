@@ -12,11 +12,8 @@ for (const file of [".env.local", ".env"]) {
 const PROXY = (process.env.COMFY_BASE_URL || "http://127.0.0.1:8192").replace(/\/$/, "");
 const COMFYUI = (process.env.COMFYUI_URL || "http://127.0.0.1:8188").replace(/\/$/, "");
 const graph = JSON.parse(readFileSync(new URL("../workflows/swap.api.json", import.meta.url), "utf8"));
-// Veda and LivePortrait are optional: without Veda a take runs full attention, without LivePortrait it runs without
-// the gestures pass (lib/swap.ts fitToInstalled takes them off the wire).
-const LIVEPORTRAIT = ["DownloadAndLoadLivePortraitModels", "LivePortraitLoadFaceAlignmentCropper", "LivePortraitCropper",
-  "LivePortraitProcess", "LivePortraitComposite"];
-const OPTIONAL = new Set(["VedaSparseAttention", ...LIVEPORTRAIT]);
+// Veda is optional: without it a take runs full attention (lib/swap.ts fitToInstalled takes it off the wire).
+const OPTIONAL = new Set(["VedaSparseAttention"]);
 const NODES = [...new Set(Object.values(graph).map((n) => n.class_type))].filter((n) => !OPTIONAL.has(n));
 // The template's file first; Xólotl falls back to the fp8 / fp16 file when only that one is installed (lib/swap.ts PREFERRED).
 const MODELS = [
@@ -55,9 +52,6 @@ if (info) {
   console.log("VedaSparseAttention" in info && predictors.includes(predictor)
     ? `✓ Veda sparse attention — models/veda/${predictor}`
     : "• Veda sparse attention not installed (optional): takes run full attention. scripts/install-nodes.sh + scripts/install-models.sh add it");
-  console.log(LIVEPORTRAIT.every((n) => n in info)
-    ? "✓ LivePortrait — the gestures pass (its weights in models/liveportrait: scripts/install-models.sh)"
-    : "• LivePortrait not installed (optional): takes run without the gestures pass. scripts/install-nodes.sh + scripts/install-models.sh add it");
 }
 console.log(failed ? `\n${failed} problem(s).` : "\nAll good — run npm run dev.");
 process.exit(failed ? 1 : 0);
