@@ -1,12 +1,29 @@
 # Xólotl
 
-**Swap the person in a video for the character in one image — on your own GPU, with open weights only. Nothing leaves your machine.**
+**Make a character. Cast it in a real clip. On your own GPU, with open weights only — nothing leaves your machine.**
 
-![Xólotl: the twin view, original on the left and the swapped character on the right](docs/xolotl.png)
+![Xólotl's twin view: the original clip left of the divider, and on the right Lana, a black sheep made in Xólotl's creator, in the same shot](docs/xolotl.png)
 
-Xólotl is a small web app in front of your ComfyUI. Drop a 5–15 s clip and one picture of a character, press *Transform*, and the person in the clip becomes that character while the performance, the scene, the camera and the original sound stay exactly as they were. The result comes back at your clip's own size and aspect ratio. It runs the character-swap graph that Comfy's own *Openjutsu* uses — MiniMax H3 with Akatz Labs' character-swap LoRA and SAM 3.1 — but entirely on a 16 GB consumer card, through Comfy's official SDK and API proxy, with no accounts, credits or closed models anywhere in the path.
+**▶ [Watch the 2-minute demo](DEMO_URL)**
+
+Xólotl is a small web app in front of your ComfyUI, with two tools that work together:
+
+- **Create** (`/create`). A character from scratch — a person, an animal that stands like a person, a hybrid, an alien or anything else — or from a picture you already have. FLUX.2 [klein] 4B draws four heads to pick from in about 20 s, then the body and its clothes around the head you pick, any change you ask for in words ("make the hoodie bright red"), and a sheet built for the swap: the front, the back and the face, all drawn from the front, on white.
+- **Swap** (`/swap`). Drop a 5–15 s clip and the character, press *Transform*, and the person in the clip becomes that character while the performance, the scene, the camera and the original sound stay exactly as they were. SAM 3.1 tracks the person, MiniMax H3 with Akatz Labs' character-swap LoRA redraws only them, and the result comes back at your clip's own size and aspect ratio.
+
+![The creator: four heads to pick from, the body, "make the hoodie bright red", and the sheet with the front, the back and the face](docs/creator.jpg)
+
+The swap runs the character-swap graph that Comfy's own *Openjutsu* uses, but entirely on a 16 GB consumer card, through Comfy's official SDK and API proxy, with no accounts, credits or closed models anywhere in the path.
 
 Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-source-higgsfield) (the *Openjutsu* prompt). Named after Xólotl, the Mexica god of lightning and transformation, the twin who could take any form.
+
+## Why it's new
+
+- **Make it and cast it, in one open app, on one GPU.** The character you design is the one you put in the shot, minutes later, with no account, no credits and no upload: two pages of the same app, two ComfyUI graphs on your own card.
+- **A sheet made for the swap.** A performer who turns around needs the character's back, and the face needs pixels. The creator draws the back and a large close-up of the face from the front, and lays the three side by side in one picture, the reference H3 casts from.
+- **The model's pixels go to the person.** The person is tracked once on the whole frame, swapped in a crop around them at up to their native resolution, and laid back over your own frames: a vertical 1080p clip comes back vertical 1080p, and everything but the person is your original footage.
+- **The character described for the model.** Qwen3-VL 8B, on the same ComfyUI, writes what the character looks like into H3's prompt — a black sheep's curly wool, not a haircut — and that description is what keeps the performer's looks out of the take.
+- **Measured, not guessed.** Each choice in the recipe was made one change at a time on an RTX A4000 16 GB, and the app's time estimates come from those runs ([docs/measurements.md](docs/measurements.md)).
 
 ## What you get
 
@@ -17,7 +34,7 @@ Built for Comfy's [Open Source Higgsfield Challenge](https://comfy.org/open-sour
 - **Also without the app.** `workflows/xolotl.api.json` is the same take as a plain ComfyUI workflow: drop it on ComfyUI, choose your clip in *Load Video* and your picture in *Load Image*, set the seconds to use, and queue it. Qwen3-VL 8B describes the picture and the prompt is written there as the app writes it; a direction of your own goes in its node.
 - **Takes.** Every finished swap stays on disk with its character, its settings and the exact workflow JSON that ran — download the video, or the workflow together with its clip and character (named as the workflow expects them) to run the same graph in ComfyUI yourself.
 - **Honest status.** Where the take is (preparing, reading, generating, assembling), the sampler's step and, for longer parts, the window, how long it has run and about how long it has left. The step comes from ComfyUI's own log, since the API proxy does not relay per-node progress, and the time left from the step time ComfyUI measures plus the timings in [docs/measurements.md](docs/measurements.md). Queue position and live GPU load too; *Stop* cancels the take through the same API; opening the app, here or in another browser on the LAN, shows a running take at once. A health pill tells you up front if a node or a model is missing (`npm run doctor` does the same from the terminal), and what the take adapts to what your ComfyUI has: Veda missing, the fp8 weights, a node of Xólotl's missing.
-- **A character creator.** `/create` makes the character you cast, in atelier's steps: the head (up to four to choose from), the body and its clothes around the head you pick, and any change in words ("make the hoodie red") on either. It starts from scratch — a person, an animal that stands like a person, a hybrid, an alien or anything else — or from a picture you already have, such as a shop's mascot. The last step is the simple sheet the swap casts from, Mike's design: all from the front, the body, with the back and a close-up of the face drawn from it and the three side by side in one picture, so a performer who turns around gets the character's back and not a made-up one. FLUX.2 [klein] 4B draws all of it on your ComfyUI, always on a plain white background: four heads in about 20 s and a body in 15 s on the A4000, and the sheet is a body and a face. *Use in the swap* takes the character, its sheet if it has one, to the swap.
+- **A character creator.** `/create` makes the character you cast, in atelier's steps: the head (up to four to choose from), the body and its clothes around the head you pick, and any change in words ("make the hoodie red") on either. It starts from scratch — a person, an animal that stands like a person, a hybrid, an alien or anything else — or from a picture you already have, such as a shop's mascot. The last step is the simple sheet the swap casts from, Mike's design: all from the front, the body, with the back and a close-up of the face drawn from it and the three side by side in one picture, so a performer who turns around gets the character's back and not a made-up one. FLUX.2 [klein] 4B draws all of it on your ComfyUI, always on a plain white background: four heads in about 20 s, a body in 16 s and the sheet in 28 s on the A4000. *Use in the swap* takes the character, its sheet if it has one, to the swap, and tells the describer what the character is, so a sheep is described by its wool and not as a person.
 - **Two bundled takes** made with open models (a clip from MiniMax H3, characters from Qwen-Image), so the first run needs no upload.
 - English and Spanish interface.
 
@@ -124,4 +141,4 @@ One continuous shot, with the person visible in the first frame; with several pe
 
 ---
 
-**En español.** Xólotl cambia a la persona de un video por el personaje de una imagen, en tu propia GPU y solo con modelos abiertos: nada sale de tu máquina, y el resultado regresa del tamaño y la proporción de tu clip. La interfaz está en inglés y español; la instalación de arriba es la misma. Es la entrada al *Open Source Higgsfield Challenge* de Comfy (la idea «Openjutsu»).
+**En español.** Xólotl crea un personaje y lo mete en un video real, en tu propia GPU y solo con modelos abiertos: nada sale de tu máquina. El creador dibuja la cabeza, el cuerpo, los cambios que pidas en palabras y una hoja con el frente, la espalda y la cara; el swap cambia a la persona del clip por ese personaje y el resultado regresa del tamaño y la proporción de tu clip, con su sonido original. La interfaz está en inglés y español; la instalación de arriba es la misma. Es la entrada al *Open Source Higgsfield Challenge* de Comfy (la idea «Openjutsu»).

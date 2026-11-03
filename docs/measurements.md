@@ -439,9 +439,37 @@ all from the front, the chosen body:
 The first version followed atelier's layout, the front without its head, and Mike changed it the same day: «no la
 queremos sin cabeza el frente, lo queremos completo de frente y tras y la cara grande». Through the app, the white
 sheep's sheet came back right (front, back and face, 2363×1104), but slowly: ComfyUI took 198-381 s for it, and 113-129
-s for each of the other steps, about six times this morning's times with the same graphs, and why is not known yet.
+s for each of the other steps, about six times this morning's times with the same graphs. The graphs were not the
+cause: after a restart of the machine the same steps took their usual times (`scripts/check-character.ts`, the sheep,
+times through the app with ComfyUI's own in brackets): four heads in 30.4 s with the model loading (26.6 s), the body in
+18.2 s (14.9 s), the change in 15.9 s (14.5 s) and the sheet in 28.3 s (25.3 s), 2504×1104.
 «Use in the swap» sends the sheet when there is one. What the back adds to a take where the performer turns
 has not been measured yet.
+
+## Lana: a sheet in a take, and the character described as what it is (2026-11-03)
+
+*Lana* (2f75a0bc) is the black sheep of the demo, made through the app from scratch while it was being recorded:
+animal, sheep, upright, black wool, 3D animated; four heads in 26.7 s, the body in a hoodie and jeans in 16.5 s,
+«make the hoodie bright red» in 16.6 s and the sheet in 26.6 s (times read off the recording). Her sheet went to the
+swap on the bundled terrace clip, the first 5.1 s at 480p (take 1eff2492): 5 min 15 s. The sheep sits at the table in
+the red hoodie for the whole take, lifts the cup, drinks and smiles at the end, with the curly wool and the pink-lined
+ears of the sheet, and everything around her is the clip's. The performer does not turn around in this clip, so the
+back is still not tested by it.
+
+The describer was the weak step. Qwen3-VL 8B reads her sheet as a person: «The character is a young adult with a
+slender build, dark grey skin, and voluminous, tightly coiled black hair styled in a natural afro that frames the face
+and extends down to the shoulders.» Telling it what the character is, in a sentence put before the workflow's prompt,
+changed nothing on the other sheep's sheet (73481265: «a young adult … black wool that forms a natural afro-style
+mane»): that prompt asks for a person's age, skin tone and haircut («naming the cut, such as … an afro»), and the model
+followed it. For the take the description was corrected by hand. Now, when the app knows what the character is (the
+creator's picks, `characterIdentity`), the prompt itself changes (`promptFor` in `lib/description.ts`): the first
+sentence starts with what the character is and goes on with its fur, wool, feathers or scales, its ears and eyes, and
+the example is a fox, not a man; the clothes and the trousers are asked for as before. Her sheet, the same model,
+7.7 s: «The character is an anthropomorphic black sheep character with a sheep's face, covered in curly black wool,
+with small pointed ears, a soft muzzle, and large brown eyes. They wear a bright red hooded sweatshirt that fits
+loosely and reaches the waistband of their jeans. Their trousers are light-blue denim jeans with a relaxed fit.» The
+other sheep's sheet comes back the same way. A person, or a picture the user gives no words for, keeps the workflow's
+own prompt.
 
 ## 768p with the default recipe
 

@@ -1,10 +1,33 @@
-# path<TAB>seconds<TAB>start — built by docs/demo/build.sh; recordings live in docs/demo/build/rec (not committed)
-docs/demo/build/card-01.png	7
-docs/demo/build/rec/a-take.webm	26	1.5
-docs/demo/build/card-02.png	6
-docs/demo/build/card-03.png	6
-docs/demo/build/rec/b-twin.webm	26	1.5
-docs/demo/build/card-04.png	7
-docs/demo/build/rec/c-comfyui.webm	15.5	31.8
-docs/demo/build/card-06.png	6
-docs/demo/build/card-05.png	8
+# path<TAB>seconds<TAB>start<TAB>speed<TAB>crop<TAB>blur — built by docs/demo/build.sh; the recordings live in docs/demo/build/rec (not committed)
+# title
+docs/demo/build/card-n01.png	4.5
+# 01 the creator: a black sheep from scratch, every wait sped up and marked
+docs/demo/build/card-n02.png	3
+docs/demo/build/rec/d-create-to-swap.webm	3.5	1.0
+docs/demo/build/rec/d-create-to-swap.webm	6	9.4	1.5
+docs/demo/build/rec/d-create-to-swap.webm	26.7	15.4	8
+docs/demo/build/rec/d-create-to-swap.webm	10	42.3	2.5
+docs/demo/build/rec/d-create-to-swap.webm	16.3	91.8	4
+docs/demo/build/rec/d-create-to-swap.webm	16.5	108.1	5
+docs/demo/build/rec/d-create-to-swap.webm	6	124.6	2
+docs/demo/build/rec/d-create-to-swap.webm	16.6	130.5	5
+docs/demo/build/rec/d-create-to-swap.webm	3	147.2
+docs/demo/build/rec/d-create-to-swap.webm	3	156.5	2
+docs/demo/build/rec/d-create-to-swap.webm	26.6	159.3	8
+docs/demo/build/rec/d-create-to-swap.webm	5	188
+docs/demo/build/rec/d-create-to-swap.webm	6	197.5	2.5
+# 02 the swap: the sheet and its description on the swap page, the bundled clip, Transform, the status; the strip of
+# test takes under it blurred (some test clips are not ours to show)
+docs/demo/build/card-n03.png	2.5
+docs/demo/build/rec/d-create-to-swap.webm	1.5	203.5	1	-	1385:112:38:866
+docs/demo/build/rec/d-create-to-swap.webm	7	303.2	1	-	1385:112:38:866
+docs/demo/build/rec/d-create-to-swap.webm	16	311.6	2.5	-	1385:112:38:866
+docs/demo/build/rec/d-create-to-swap.webm	3.5	327.6	1	-	1385:112:38:866
+# 03 the twin view: Lana's finished take
+docs/demo/build/card-n04.png	2.5
+docs/demo/build/rec/e-twin-lana.webm	14.5	20.8	1	1280:720:88:120
+# 04 how it was built, 05 why it is new, 06 measured
+docs/demo/build/card-n05.png	6
+docs/demo/build/rec/c-comfyui.webm	8	31.8
+docs/demo/build/card-n06.png	5.5
+docs/demo/build/card-n07.png	6.5
