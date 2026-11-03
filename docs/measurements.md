@@ -306,6 +306,29 @@ What was tried on the nine pictures (the four above and five sheets; everything 
 
 Asked directly (*Is there a garment worn over the black shirt, around the torso?*), Gemma described the corset, buckles and straps at 280 tokens too: it sees it, but leaves it out of a general description until the picture reaches it with more detail. ComfyUI's Generate Text tokenizes every image with 280 tokens (`max_soft_tokens`, about 0.65 MP; Renata's face reaches it 72 px wide) and does not expose the budget; Gemma 4's vision encoder takes up to 1120 (10 240 patch positions, 9 per token). Xólotl's *Let Gemma See More of the Picture* (`XolotlImageDetail`) hands the loaded Gemma on with that budget for every image it reads, and the describe workflows use it at 1120: the same instruction, the same 2-3 s, and the corset and the cuffs named.
 
+### Qwen3-VL 8B instead of Gemma (2026-11-02)
+
+On Higgsfield's third sheet, a bodybuilder, Gemma 4 E2B wrote "slender" or "lean" in all 17 of its descriptions
+(every instruction above, thinking mode included), and a take with that description would have drawn him thin.
+ComfyUI's same *Generate Text* runs Qwen3-VL 8B (`qwen3vl_8b_int8_convrot`, Qwen-Image 2.1's text encoder from
+Comfy-Org, Apache 2.0, 8.7 GB; the file keeps the vision tower and `lm_head`) with the same instruction and without
+Xólotl's image-token node, which only Gemma needs. On the nine pictures (`scripts/describe-bench.py`,
+`descripciones/runs.jsonl`):
+
+| Picture | Gemma 4 E2B | Qwen3-VL 8B |
+|---|---|---|
+| sheet 3, a bodybuilder | slender or lean, 17 of 17 | **muscular**, a cropped polo over a bare midriff, the open olive jacket; a "buzz-cut with a straight fringe" for a bowl cut |
+| the pink-haired preset | no corset | **the corset**, lace on the sleeves; the hair "shaved on the sides" |
+| sheet 2 | a long tunic for track pants | the track jacket's yellow panels, the striped track pants |
+| sheets 1 and 4 | lengths made up | the afro and the camouflage cargo pants; the quiff, the piercings, the ripped jeans |
+| Renata | no freckles | the freckles |
+
+Each picture after the first: 10.7-10.9 s for a 2688×1520 sheet, 3.8-5.0 s for a portrait (Gemma: about 2 s); the
+first, with the load, 17.2 s; 397-520 characters. Through the app (`POST /api/describe`), sheet 3 comes back with the
+same "muscular build". A take of that sheet through the app (b7ce9741, 13 s at 480p, 16 min 37 s, described by hand as
+a bodybuilder before this change): in eight frames across the 13 s he keeps his build, the bowl cut, the cropped polo
+and the olive jacket, through the turn and the lean into the camera.
+
 ## 768p with the default recipe
 
 The 5.1 s terrace take at 768p, same character and seed, run with `scripts/bake-run.mjs` from the framed 480p take's workflow (`fit`, `fit0`, `31` and `31a` at 768). The crop around the person goes on a 1024×768 canvas at its native size (28 416 video tokens, 15 537 regenerated). The candidate was lightx2v's ref2v 4-step LoRA v1.0 for 768p, against the default v0.1. Its model specs (ModelTC/Minimax-H3-Turbo) list v0.1 as trained at 544p with video shift 12, and the 768p LoRAs of the same series at shift 6, so it ran at both shifts.
